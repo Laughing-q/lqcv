@@ -5,3 +5,8 @@ develop-eggs/
 *.egg
 
 __pycache__/
+
+*.pt
+./weights
+*.mp4
+*.avi
