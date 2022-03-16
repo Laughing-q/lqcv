@@ -3,6 +3,7 @@ This is my computer vision lib.
 
 ## TODO
 - [X] areas module support multi areas.
+- [ ] fix stream reader saving problem(thread).
 
 ## Quick Start
 
