@@ -1,0 +1,7 @@
+eggs/
+.eggs/
+*.egg-info/
+develop-eggs/
+*.egg
+
+__pycache__/
