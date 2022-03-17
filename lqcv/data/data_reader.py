@@ -13,8 +13,10 @@ NOTE:
     `ReadVideosAndImages` and `ReadStreams` are pure data readers without preprocessing.
 """
 
+
 class ReadStreams:
     """Read Streams, modified from yolov5, support multi streams reading, but support one streams saving for now."""
+
     def __init__(self, sources="streams.txt", img_size=640, stride=32, auto=True):
         self.mode = "stream"
         self.img_size = img_size
@@ -112,6 +114,7 @@ class ReadStreams:
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
 
     def save(self, save_path, image, i=0):
+        # TODO: this won't work, cause the multi thread stuff.
         if self.vid_path[i] != save_path:  # new video
             self.vid_path[i] = save_path
             fps, w, h = 30, image.shape[1], image.shape[0]
@@ -124,6 +127,7 @@ class ReadStreams:
 
 class ReadVideosAndImages:
     """Read Videos and Images, modified from yolov5"""
+
     def __init__(self, source: str):
         p = str(Path(source).resolve())  # os-agnostic absolute path
         if "*" in p:
@@ -217,7 +221,7 @@ def create_reader(source: str):
     """This is for data(video, webcam, image, image_path) reading in inference.
     Args:
         source(str): data source, could be a video,image,dir or webcam.
-    Return: 
+    Return:
         reader(ReadVideosAndImages | ReadStreams): data reader.
         webcam(bool): the source is webcam or not.
     """
