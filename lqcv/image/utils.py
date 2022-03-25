@@ -14,17 +14,6 @@ IMG_FORMATS = [
     "webp",
     "mpo",
 ]  # acceptable image suffixes
-VID_FORMATS = [
-    "mov",
-    "avi",
-    "mp4",
-    "mpg",
-    "mpeg",
-    "m4v",
-    "wmv",
-    "mkv",
-    "vdo",
-]  # acceptable video suffixes
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():

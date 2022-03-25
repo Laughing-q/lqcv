@@ -4,7 +4,8 @@ import cv2
 import time
 from pathlib import Path
 from threading import Thread
-from ..image.utils import IMG_FORMATS, VID_FORMATS
+from ..image.utils import IMG_FORMATS
+from ..video.utils import VID_FORMATS
 from ..utils.checker import check_requirements
 from ..utils.general import clean_str
 
@@ -17,10 +18,8 @@ NOTE:
 class ReadStreams:
     """Read Streams, modified from yolov5, support multi streams reading, but support one streams saving for now."""
 
-    def __init__(self, sources="streams.txt", img_size=640, stride=32, auto=True):
+    def __init__(self, sources="streams.txt"):
         self.mode = "stream"
-        self.img_size = img_size
-        self.stride = stride
 
         if osp.isfile(sources):
             with open(sources, "r") as f:
@@ -39,7 +38,6 @@ class ReadStreams:
             [None] * n,
         )
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
-        self.auto = auto
         for i, s in enumerate(sources):  # index, source
             # Start thread to read frames from video stream
             print(f"{i + 1}/{n}: {s}... ", end="")
@@ -123,6 +121,70 @@ class ReadStreams:
                 save_path, cv2.VideoWriter_fourcc(*"mp4v"), int(self.fps[i]), (w, h)
             )
         self.vid_writer[i].write(image)
+
+
+class ReadOneStream:
+    """Read one Stream, modified from yolov5, support one streams reading and saving."""
+
+    def __init__(self, source):
+        self.mode = "stream"
+
+        self.vid_path, self.vid_writer = None, None
+        self.fps, self.frames = 0, 0
+        self.source = clean_str(source)  # clean source names for later
+
+        # Start thread to read frames from video stream
+        print(f"{1}/{1}: {source}... ", end="")
+        if (
+            "youtube.com/" in source or "youtu.be/" in source
+        ):  # if source is YouTube video
+            check_requirements(("pafy", "youtube_dl"))
+            import pafy
+
+            source = pafy.new(source).getbest(preftype="mp4").url  # YouTube URL
+        source = (
+            eval(source) if source.isnumeric() else source
+        )  # i.e. s = '0' local webcam
+        self.cap = cv2.VideoCapture(source)
+        assert self.cap.isOpened(), f"Failed to open {source}"
+        w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.fps = (
+            max(self.cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0
+        )  # 30 FPS fallback
+        self.frames = max(int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float(
+            "inf"
+        )  # infinite stream fallback
+
+        print(f" success ({self.frames} frames {w}x{h} at {self.fps:.2f} FPS)")
+        print("")  # newline
+
+    def __iter__(self):
+        self.count = -1
+        return self
+
+    def __next__(self):
+        self.count += 1
+        ret_val, img0 = self.cap.read()
+        if not ret_val or cv2.waitKey(1) == ord("q"):  # q to quit
+            self.count += 1
+            self.cap.release()
+            cv2.destroyAllWindows()
+            raise StopIteration
+
+        return img0, self.source, " "
+
+    def __len__(self):
+        return 1
+
+    def save(self, save_path, image):
+        if self.vid_path != save_path:  # new video
+            self.vid_path = save_path
+            fps, w, h = 30, image.shape[1], image.shape[0]
+            self.vid_writer = cv2.VideoWriter(
+                save_path, cv2.VideoWriter_fourcc(*"mp4v"), int(self.fps), (w, h)
+            )
+        self.vid_writer.write(image)
 
 
 class ReadVideosAndImages:
@@ -228,7 +290,7 @@ def create_reader(source: str):
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
     webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
-    return ReadStreams(source) if webcam else ReadVideosAndImages(source), webcam
+    return ReadOneStream(source) if webcam else ReadVideosAndImages(source), webcam
 
 
 if __name__ == "__main__":
