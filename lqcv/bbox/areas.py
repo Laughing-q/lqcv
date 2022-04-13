@@ -7,6 +7,7 @@ from .bbox_utils import Boxes
 
 class Area:
     """
+    Boxes in areas or not.
     Args:
         area (List | ndarray): single area,
             if area_type is `rect`, then area is like [x1, y1, x2, y2]

@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+
 
 def clip_coords(boxes, shape):
     """
@@ -42,6 +44,7 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     clip_coords(coords, img0_shape)
     return coords
 
+
 def box_iou(box1, box2):
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
@@ -74,3 +77,70 @@ def box_iou(box1, box2):
     return inter / (
         area1[:, None] + area2 - inter
     )  # iou = inter / (area1 + area2 - inter)
+
+
+def nms_numpy(boxes, scores, class_id, threshold, method=None, agnostic=False):
+    """
+    :param boxes: numpy(N, 4), xyxy
+    :param scores: numpy(N, )
+    :param class_id: numpy(N, )
+    :param threshold: float
+    :param method:
+    :return: kept boxed index
+    """
+    if boxes.size == 0:
+        return np.empty((0,), dtype=np.int8)
+    max_wh = 4096
+    if isinstance(boxes, torch.Tensor):
+        boxes = boxes.cpu().numpy()
+    if isinstance(scores, torch.Tensor):
+        scores = scores.cpu().numpy()
+    if isinstance(class_id, torch.Tensor):
+        class_id = class_id.cpu().numpy()
+
+    if boxes.ndim == 1:
+        boxes = boxes[None, :]
+    assert boxes.shape[1] == 4, f"expected boxes shape [N, 4], but got {boxes.shape}"
+    if len(class_id.shape) == 1:
+        class_id = class_id[:, None]
+
+    assert (
+        boxes.shape[0] == class_id.shape[0] == scores.shape[0]
+    ), f"boxes, class_id and scores shapes must be equal"
+
+    c = class_id * (0 if agnostic else max_wh)
+    boxes = boxes + c
+    x1 = boxes[:, 0].copy()
+    y1 = boxes[:, 1].copy()
+    x2 = boxes[:, 2].copy()
+    y2 = boxes[:, 3].copy()
+
+    s = scores
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+
+    I = np.argsort(s)  # 从小到大排序索引
+    pick = np.zeros_like(s, dtype=np.int16)
+    counter = 0
+    while I.size > 0:
+        i = I[-1]
+        pick[counter] = i
+        counter += 1
+        idx = I[0:-1]
+
+        xx1 = np.maximum(x1[i], x1[idx]).copy()
+        yy1 = np.maximum(y1[i], y1[idx]).copy()
+        xx2 = np.minimum(x2[i], x2[idx]).copy()
+        yy2 = np.minimum(y2[i], y2[idx]).copy()
+
+        w = np.maximum(0.0, xx2 - xx1 + 1).copy()
+        h = np.maximum(0.0, yy2 - yy1 + 1).copy()
+
+        inter = w * h
+        if method == "Min":
+            o = inter / np.minimum(area[i], area[idx])
+        else:
+            o = inter / (area[i] + area[idx] - inter)
+        I = I[np.where(o <= threshold)]
+
+    pick = pick[:counter].copy()
+    return pick

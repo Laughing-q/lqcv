@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from .coord import clip_coords
+from .utils import clip_coords
 
 
 def xyxy2xywh(x):

@@ -99,6 +99,7 @@ class Boxes:
                 coords[0][None, :, :] if len(coords) == 1 else self.stack(coords, 0)
             )
         if frame is not None:
+            import cv2
             for coords in vertices.tolist():
                 for coord in coords:
                     cv2.circle(frame, (int(coord[0]), int(coord[1])), 1, (0, 0, 255), 5)
