@@ -21,3 +21,5 @@ pip install -e .
 
 # Reference
 [https://github.com/open-mmlab/mmcv](https://github.com/open-mmlab/mmcv)
+[https://github.com/ultralytics/yolov5](https://github.com/ultralytics/yolov5)
+[https://github.com/facebookresearch/detectron2.git](https://github.com/facebookresearch/detectron2.git)
