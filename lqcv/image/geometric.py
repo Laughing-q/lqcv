@@ -35,17 +35,17 @@ def imrescale(
     nw, nh = new_wh
     if keep_ratio:
         scale_factor = min(nw / w, nh / h)
-        im = cv2.resize(
-            im,
+        img = cv2.resize(
+            img,
             (int(w * scale_factor), int(h * scale_factor)),
             interpolation=cv2_interp_codes[interpolation],
         )
     else:
-        im = cv2.resize(im, (nw, nh), interpolation=cv2_interp_codes[interpolation])
+        img = cv2.resize(img, (nw, nh), interpolation=cv2_interp_codes[interpolation])
 
     if return_scale:
-        nh, nw = im.shape[:2]
+        nh, nw = img.shape[:2]
         w_scale = nw / w
         h_scale = nh / h
-        return im, w_scale, h_scale
-    return im
+        return img, w_scale, h_scale
+    return img
