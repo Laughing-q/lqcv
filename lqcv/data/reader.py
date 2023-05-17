@@ -198,7 +198,8 @@ class ReadVideosAndImages:
             # Read video
             self.mode = "video"
             ret_val, img0 = self.cap.read()
-            if not ret_val:
+            if self.frame == self.frames:
+            # if not ret_val:
                 self.count += 1
                 self.cap.release()
                 if self.count == self.nf:  # last video
@@ -209,7 +210,7 @@ class ReadVideosAndImages:
                     ret_val, img0 = self.cap.read()
 
             self.frame += 1
-            s = f"video {self.count + 1}/{self.nf} "
+            s = f"video {self.count + 1}/{self.nf} {self.frame}/{self.frames}"
         else:
             # Read image
             self.count += 1
