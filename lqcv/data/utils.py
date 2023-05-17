@@ -21,4 +21,5 @@ VID_FORMATS = [
     "mkv",
     "vdo",
     "flv",
+    "ts",
 ]  # acceptable video suffixes

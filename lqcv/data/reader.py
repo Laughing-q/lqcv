@@ -101,12 +101,13 @@ class ReadStreams:
 class ReadOneStream:
     """Read one Stream, modified from yolov5, support one streams reading and saving."""
 
-    def __init__(self, source):
+    def __init__(self, source, vid_stride=1):
         self.mode = "stream"
 
         self.vid_path, self.vid_writer = None, None
         self.fps, self.frames = 0, 0
         self.source = source  # clean source names for later
+        self.vid_stride = vid_stride
 
         # Start thread to read frames from video stream
         print(f"{1}/{1}: {source}... ", end="")
@@ -128,9 +129,10 @@ class ReadOneStream:
         return self
 
     def __next__(self):
-        self.count += 1
-        ret_val, img0 = self.cap.read()
-        if not ret_val or cv2.waitKey(1) == ord("q"):  # q to quit
+        for _ in range(self.vid_stride):
+            self.cap.grab()
+        success, img0 = self.cap.retrieve()
+        if not success or cv2.waitKey(1) == ord("q"):  # q to quit
             self.count += 1
             self.cap.release()
             cv2.destroyAllWindows()
@@ -142,7 +144,13 @@ class ReadOneStream:
         return 1
 
     def save(self, save_path, image):
-        save_path = f"{save_path}.mp4"
+        """save video.
+
+        Args:
+            save_path (str): Save path, with suffix(`.avi`, `.mp4`) or not.
+            image (nd.ndarray): The image/frame.
+        """
+        save_path = f"{save_path}.mp4" if Path(save_path).suffix[1:] not in VID_FORMATS else save_path
         if self.vid_path != save_path:  # new video
             self.vid_path = save_path
             w, h = image.shape[1], image.shape[0]
@@ -155,7 +163,7 @@ class ReadOneStream:
 class ReadVideosAndImages:
     """Read Videos and Images, modified from yolov5"""
 
-    def __init__(self, source: str):
+    def __init__(self, source: str, vid_stride=1):
         p = str(Path(source).resolve())  # os-agnostic absolute path
         if "*" in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
@@ -175,6 +183,7 @@ class ReadVideosAndImages:
         self.files = images + videos
         self.nf = ni + nv  # number of files
         self.video_flag = [False] * ni + [True] * nv
+        self.vid_stride = vid_stride
         self.mode = "image"
         if any(videos):
             self.new_video(videos[0])  # new video
@@ -197,9 +206,11 @@ class ReadVideosAndImages:
         if self.video_flag[self.count]:
             # Read video
             self.mode = "video"
-            ret_val, img0 = self.cap.read()
-            if self.frame == self.frames:
-            # if not ret_val:
+            for _ in range(self.vid_stride):
+                self.cap.grab()
+            success, img0 = self.cap.retrieve()
+            if self.frame >= self.frames:
+            # if not success:
                 self.count += 1
                 self.cap.release()
                 if self.count == self.nf:  # last video
@@ -207,9 +218,9 @@ class ReadVideosAndImages:
                 else:
                     path = self.files[self.count]
                     self.new_video(path)
-                    ret_val, img0 = self.cap.read()
+                    success, img0 = self.cap.read()
 
-            self.frame += 1
+            self.frame += self.vid_stride
             s = f"video {self.count + 1}/{self.nf} {self.frame}/{self.frames}"
         else:
             # Read image
@@ -224,21 +235,31 @@ class ReadVideosAndImages:
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
         self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        try:
+            self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        except:
+            print("Warning: get inf fps, hand-coded it to 25.")
+            self.fps = 25
 
     def save(self, save_path, image):
+        """save image or video.
+
+        Args:
+            save_path (str): Save path, with suffix(`.jpg`, `.mp4`) or not.
+            image (nd.ndarray): The image/frame.
+        """
         if self.mode == "image":
-            save_path = f"{save_path}.jpg"
+            save_path = f"{save_path}.jpg" if Path(save_path).suffix[1:] not in IMG_FORMATS else save_path
             cv2.imwrite(save_path, image)
         else:  # 'video' or 'stream'
-            save_path = f"{save_path}.mp4"
+            save_path = f"{save_path}.mp4" if Path(save_path).suffix[1:] not in VID_FORMATS else save_path
             if self.vid_path != save_path:  # new video
                 self.vid_path = save_path
                 if isinstance(self.vid_writer, cv2.VideoWriter):
                     self.vid_writer.release()  # release previous video writer
-                fps = self.cap.get(cv2.CAP_PROP_FPS)
                 w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                self.vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+                self.vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
             self.vid_writer.write(image)
 
     def __len__(self):
