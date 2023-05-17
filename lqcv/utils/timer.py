@@ -1,6 +1,5 @@
-# from mmcv
-from time import time
-from time import sleep
+# from time import time
+import time
 import torch
 import functools
 
@@ -9,7 +8,7 @@ def time_sync():
     # pytorch-accurate time
     if torch.cuda.is_available():
         torch.cuda.synchronize()
-    return time()
+    return time.time()
 
 
 class TimerError(Exception):
@@ -24,16 +23,15 @@ class Timer:
     :Example:
 
     >>> import time
-    >>> import mmcv
-    >>> with mmcv.Timer():
+    >>> with Timer():
     >>>     # simulate a code block that will run for 1s
     >>>     time.sleep(1)
     1.000
-    >>> with mmcv.Timer(print_tmpl='it takes {:.1f} seconds'):
+    >>> with Timer(print_tmpl='it takes {:.1f} seconds'):
     >>>     # simulate a code block that will run for 1s
     >>>     time.sleep(1)
     it takes 1.0 seconds
-    >>> timer = mmcv.Timer()
+    >>> timer = Timer()
     >>> time.sleep(0.5)
     >>> print(timer.since_start())
     0.500
@@ -44,16 +42,14 @@ class Timer:
     1.000
     """
 
-    def __init__(
-        self, start=True, print_tmpl=None, cuda_sync=False, round=None, unit="s"
-    ):
-        assert unit in ['s', 'ms']
+    def __init__(self, start=True, print_tmpl=None, cuda_sync=False, round=None, unit="s"):
+        assert unit in ["s", "ms"]
         assert round is None or isinstance(round, int)
         self._is_running = False
         self.round = round
         self.unit = unit
         self.print_tmpl = print_tmpl if print_tmpl else "{:.3f}"
-        self.time = time_sync if cuda_sync else time
+        self.time = time_sync if cuda_sync else time.time
         if start:
             self.start()
 
@@ -87,7 +83,7 @@ class Timer:
             raise TimerError("timer is not running")
         self._t_last = self.time()
         dur = self._t_last - self._t_start
-        if self.unit == 'ms':
+        if self.unit == "ms":
             dur = dur * 1000
         if self.round is not None:
             dur = round(dur, self.round)
@@ -104,44 +100,12 @@ class Timer:
         if not self._is_running:
             raise TimerError("timer is not running")
         dur = self.time() - self._t_last
-        if self.unit == 'ms':
+        if self.unit == "ms":
             dur = dur * 1000
         if self.round is not None:
             dur = round(dur, self.round)
         self._t_last = self.time()
         return dur
-
-
-_g_timers = {}  # global timers
-
-
-def check_time(timer_id):
-    """Add check points in a single line.
-
-    This method is suitable for running a task on a list of items. A timer will
-    be registered when the method is called for the first time.
-
-    :Example:
-
-    >>> import time
-    >>> import mmcv
-    >>> for i in range(1, 6):
-    >>>     # simulate a code block
-    >>>     time.sleep(i)
-    >>>     mmcv.check_time('task1')
-    2.000
-    3.000
-    4.000
-    5.000
-
-    Args:
-        timer_id (str): Timer identifier.
-    """
-    if timer_id not in _g_timers:
-        _g_timers[timer_id] = Timer()
-        return 0
-    else:
-        return _g_timers[timer_id].since_last_check()
 
 
 def timer(cuda_sync=False):
@@ -161,9 +125,9 @@ def timer(cuda_sync=False):
 
 
 if __name__ == "__main__":
-    timer = Timer()
-    sleep(0.5)
+    timer = Timer(unit="ms", round=2)
+    time.sleep(0.5)
     print(timer.since_start())
-    sleep(0.5)
+    time.sleep(0.5)
     print(timer.since_last_check())
     print(timer.since_start())

@@ -9,10 +9,6 @@ from ..video.utils import VID_FORMATS
 from ..utils.checker import check_requirements
 from ..utils.general import clean_str
 
-"""
-NOTE:
-    `ReadVideosAndImages` and `ReadStreams` are pure data readers without preprocessing.
-"""
 
 
 class ReadStreams:

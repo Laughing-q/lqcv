@@ -1,3 +1,15 @@
+IMG_FORMATS = [
+    "bmp",
+    "jpg",
+    "jpeg",
+    "png",
+    "tif",
+    "tiff",
+    "dng",
+    "webp",
+    "mpo",
+]  # acceptable image suffixes
+
 VID_FORMATS = [
     "mov",
     "avi",
