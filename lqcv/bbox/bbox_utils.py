@@ -1,7 +1,5 @@
 from typing import List
 from lqcv.utils import ops
-import numpy as np
-import torch
 
 
 class Boxes:
@@ -10,15 +8,15 @@ class Boxes:
         boxes (np.ndarray | torch.Tensor): boxes, xyxy format.
     """
 
-    def __init__(self, boxes) -> None:
+    def __init__(self, boxes):
         boxes = boxes[None, :] if boxes.ndim == 1 else boxes
         assert boxes.ndim == 2
         assert boxes.shape[1] == 4
-        # n, 4
+        # (n, 4)
         self.boxes = boxes
 
     @classmethod
-    def stack(cls, boxes_list, dim=0):
+    def stack(cls, boxes_list: List['Boxes'], dim=0):
         assert isinstance(boxes_list, (list, tuple))
 
         if len(boxes_list) == 1:
@@ -26,7 +24,7 @@ class Boxes:
         return cls(ops.stack([b.bboxes for b in boxes_list], dim=dim))
 
     @classmethod
-    def cat(cls, boxes_list, dim=0):
+    def cat(cls, boxes_list: List['Boxes'], dim=0):
         assert isinstance(boxes_list, (list, tuple))
 
         if len(boxes_list) == 1:
@@ -67,8 +65,8 @@ class Boxes:
         )
         return areas
 
-    def get_vertice(self, filter=None, frame=None):
-        """Get the vertice of self.boxes.
+    def get_coords(self, filter=None, frame=None):
+        """Get the coordinates of self.boxes.
         Args:
             filter (str | List[str] | [optional]): include `lt`,
                 `lb`, `rt`, `rb` or `center`, if None, return
@@ -80,7 +78,7 @@ class Boxes:
         """
         if filter is None:
             # NOTE: exclude center
-            vertices = ops.stack([self.lt, self.lb, self.rt, self.rb], 0)
+            coordinates = ops.stack([self.lt, self.lb, self.rt, self.rb], 0)
         else:
             if isinstance(filter, str):
                 filter = [filter]
@@ -97,13 +95,13 @@ class Boxes:
                     coords.append(self.rb)
                 else:
                     coords.append(self.center)
-            vertices = (
+            coordinates = (
                 coords[0][None, :, :] if len(coords) == 1 else ops.stack(coords, 0)
             )
         if frame is not None:
             import cv2
 
-            for coords in vertices.tolist():
+            for coords in coordinates:
                 for coord in coords:
                     cv2.circle(frame, (int(coord[0]), int(coord[1])), 1, (0, 0, 255), 5)
-        return vertices
+        return coordinates
