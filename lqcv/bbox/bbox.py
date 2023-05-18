@@ -149,3 +149,6 @@ class Boxes:
                 for coord in coords:
                     cv2.circle(frame, (int(coord[0]), int(coord[1])), 1, (0, 0, 255), 5)
         return coordinates
+
+    def __len__(self):
+        return len(self.boxes)
