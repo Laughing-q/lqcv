@@ -2,21 +2,56 @@ from typing import List
 from lqcv.utils import ops
 
 
+_formats = ["xyxy", "xywh", "ltwh"]
+
+
 class Boxes:
     """
     Args:
-        boxes (np.ndarray | torch.Tensor): boxes, xyxy format.
+        boxes (np.ndarray | torch.Tensor): boxes.
+        format (str): box format, should be xyxy or xywh or ltwh.
     """
 
-    def __init__(self, boxes):
+    def __init__(self, boxes, format="xyxy"):
+        assert (
+            format in _formats
+        ), f"Invalid bounding box format: {format}, format must be one of {_formats}"
         boxes = boxes[None, :] if boxes.ndim == 1 else boxes
         assert boxes.ndim == 2
         assert boxes.shape[1] == 4
         # (n, 4)
         self.boxes = boxes
 
+    def convert(self, format):
+        """Converts bounding box format from one type to another."""
+        assert (
+            format in _formats
+        ), f"Invalid bounding box format: {format}, format must be one of {_formats}"
+        if self.format == format:
+            return
+        elif self.format == "xyxy":
+            boxes = (
+                ops.xyxy2xywh(self.boxes)
+                if format == "xywh"
+                else ops.xyxy2ltwh(self.boxes)
+            )
+        elif self.format == "xywh":
+            boxes = (
+                ops.xywh2xyxy(self.boxes)
+                if format == "xyxy"
+                else ops.xywh2ltwh(self.boxes)
+            )
+        else:
+            boxes = (
+                ops.ltwh2xyxy(self.boxes)
+                if format == "xyxy"
+                else ops.ltwh2xywh(self.boxes)
+            )
+        self.boxes = boxes
+        self.format = format
+
     @classmethod
-    def stack(cls, boxes_list: List['Boxes'], dim=0):
+    def stack(cls, boxes_list: List["Boxes"], dim=0):
         assert isinstance(boxes_list, (list, tuple))
 
         if len(boxes_list) == 1:
@@ -24,7 +59,7 @@ class Boxes:
         return cls(ops.stack([b.bboxes for b in boxes_list], dim=dim))
 
     @classmethod
-    def cat(cls, boxes_list: List['Boxes'], dim=0):
+    def cat(cls, boxes_list: List["Boxes"], dim=0):
         assert isinstance(boxes_list, (list, tuple))
 
         if len(boxes_list) == 1:
@@ -34,36 +69,44 @@ class Boxes:
     @property
     def lt(self):
         """left top, (n, 2)"""
+        self.convert("xyxy")
         return self.boxes[:, :2]
 
     @property
     def rt(self):
         """right top, (n, 2)"""
+        self.convert("xyxy")
         return ops.stack([self.boxes[:, 2], self.boxes[:, 1]], 1)
 
     @property
     def lb(self):
         """left bottom, (n, 2)"""
+        self.convert("xyxy")
         return ops.stack([self.boxes[:, 0], self.boxes[:, 3]], 1)
 
     @property
     def rb(self):
+        self.convert("xyxy")
         """right bottom, (n, 2)"""
         return self.boxes[:, 2:]
 
     @property
     def center(self):
         """center, (n, 2)"""
-        x_center = (self.boxes[:, 0] + self.boxes[:, 2]) / 2
-        y_center = (self.boxes[:, 1] + self.boxes[:, 3]) / 2
-        return ops.stack([x_center, y_center], 1)
+        self.convert("xywh")
+        return self.boxes[:, 2:]
 
     @property
     def areas(self):
+        self.convert("xyxy")
         areas = (self.boxes[:, 2] - self.boxes[:, 0]) * (
             self.boxes[:, 3] - self.boxes[:, 1]
         )
         return areas
+
+    @property
+    def data(self):
+        return self.boxes
 
     def get_coords(self, filter=None, frame=None):
         """Get the coordinates of self.boxes.
