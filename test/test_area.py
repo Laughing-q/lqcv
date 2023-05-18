@@ -1,6 +1,5 @@
 from lqcv.bbox import Area, Areas
 from ultralytics import YOLO
-from tqdm import tqdm
 import cv2
 
 
@@ -34,7 +33,7 @@ def test_multi(results, areas, atype="rect", numpy=False):
 
 
 if __name__ == "__main__":
-    # TODO: example rect and polygon for 1920x1080 video.
+    # NOTE: example rect and polygon for 1920x1080 video.
     rect = [545, 248, 1414, 616]
     polygon = [559, 245, 1035, 242, 1136, 668, 253, 720]
 
