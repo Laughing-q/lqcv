@@ -2,7 +2,9 @@ import numpy as np
 import torch
 import cv2
 from typing import Iterable
-from .bbox_utils import Boxes
+from .bbox import Boxes
+
+__all__ = ["Area", "Areas"]
 
 
 class Area:
@@ -98,9 +100,7 @@ class Area:
 
     def plot(self, frame):
         if self.area_type == "rect":
-            cv2.rectangle(
-                frame, self.area[:2], self.area[2:], (0, 0, 255), 2, cv2.LINE_AA
-            )
+            cv2.rectangle(frame, self.area[:2], self.area[2:], (0, 0, 255), 2, cv2.LINE_AA)
         else:
             cv2.polylines(
                 img=frame,
@@ -135,9 +135,9 @@ class Area:
             # ind记录索引
             ind = np.nonzero(index)
             points_ = points[index]
-            point12lng_part = point2[0] - (point2[1] - points_[:, 1]) * (
-                point2[0] - point1[0]
-            ) / (point2[1] - point1[1])
+            point12lng_part = point2[0] - (point2[1] - points_[:, 1]) * (point2[0] - point1[0]) / (
+                point2[1] - point1[1]
+            )
             point12lng = np.zeros_like(points)[:, 0]
             point12lng[ind] = point12lng_part
             # print(ind, point12lng)
@@ -163,9 +163,7 @@ class Areas(Area):
     def __init__(self, areas, area_type="rect") -> None:
         # List[area]
         self.areas = [self._check(area, area_type) for area in areas]
-        assert (
-            len(self.areas) > 1
-        ), "you got only one area, please use single versoin `Area`."
+        assert len(self.areas) > 1, "you got only one area, please use single versoin `Area`."
         if area_type == "rect":
             self.areas = np.asarray(self.areas)
         self.area_type = area_type
@@ -217,8 +215,7 @@ class Areas(Area):
             vertices = vertices.numpy()
         # (na, m, nb)
         count = [
-            [self._isPointinPolygon(vertice, area) for vertice in vertices]
-            for area in self.areas
+            [self._isPointinPolygon(vertice, area) for vertice in vertices] for area in self.areas
         ]
         # (na, nb)
         index = np.asarray(count).any(1)

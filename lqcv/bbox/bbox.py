@@ -2,6 +2,7 @@ from typing import List
 from lqcv.utils import ops
 
 
+__all__ = "Boxes"
 _formats = ["xyxy", "xywh", "ltwh"]
 
 
