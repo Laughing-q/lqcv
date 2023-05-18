@@ -39,10 +39,14 @@ class Area:
             area = area.reshape(len(area) // 2, 2)
             return area
 
-    def boxes_in_rect(self, boxes, *args, **kwargs):
+    def boxes_in_rect(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (np.ndarray | torch.Tensor): same type and length with boxes, index
                 of boxes which are in areas.
@@ -54,22 +58,26 @@ class Area:
         right_bottom = self.area[2:]
         # deal with torch.Tensor
         if isinstance(boxes, torch.Tensor):
-            left_top = torch.as_tensor(left_top)
-            right_bottom = torch.as_tensor(right_bottom)
+            left_top = torch.as_tensor(left_top, device=boxes.device)
+            right_bottom = torch.as_tensor(right_bottom, device=boxes.device)
 
         boxes = Boxes(boxes)
         # (m, n, 2)
-        vertices = boxes.get_coords(*args, **kwargs)
+        coordinates = boxes.get_coords(filter=filter, frame=frame)
         # (m, n)
-        count = (vertices > left_top).all(2) * (vertices < right_bottom).all(2)
+        count = (coordinates > left_top).all(2) * (coordinates < right_bottom).all(2)
         # (n, )
         index = count.any(0)
         return index
 
-    def boxes_in_polygon(self, boxes, *args, **kwargs):
+    def boxes_in_polygon(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (List): index of boxes which are in areas.
         """
@@ -77,26 +85,30 @@ class Area:
             return False
         boxes = Boxes(boxes)
         # (m, n, 2)
-        vertices = boxes.get_coords(*args, **kwargs)
+        coordinates = boxes.get_coords(filter=filter, frame=frame)
         # torch.Tensor -> ndarray, cause `_isPointinPolygon` support numpy for now.
-        if isinstance(vertices, torch.Tensor):
-            vertices = vertices.cpu().numpy()
+        if isinstance(coordinates, torch.Tensor):
+            coordinates = coordinates.cpu().numpy()
         # (m, n)
-        count = [Area.isPointinPolygon(vertice, self.area) for vertice in vertices]
+        count = [Area.isPointinPolygon(vertice, self.area) for vertice in coordinates]
         index = np.asarray(count).any(0)
         return index
 
-    def boxes_in_area(self, boxes, *args, **kwargs):
+    def filter_boxes(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (List): index of boxes which are in areas.
         """
         if self.atype == "rect":
-            return self.boxes_in_rect(boxes, *args, **kwargs)
+            return self.boxes_in_rect(boxes, filter=filter, frame=frame)
         else:
-            return self.boxes_in_polygon(boxes, *args, **kwargs)
+            return self.boxes_in_polygon(boxes, filter=filter, frame=frame)
 
     def plot(self, frame):
         if self.atype == "rect":
@@ -158,18 +170,22 @@ class Areas(Area):
         area_type (str): `rect` or `polygon`.
     """
 
-    def __init__(self, areas, area_type="rect") -> None:
+    def __init__(self, areas, atype="rect") -> None:
         # List[area]
-        self.areas = [self._check(area, area_type) for area in areas]
+        self.areas = [self._check(area, atype) for area in areas]
         assert len(self.areas) > 1, "you got only one area, please use single versoin `Area`."
-        if area_type == "rect":
+        if atype == "rect":
             self.areas = np.asarray(self.areas)
-        self.area_type = area_type
+        self.atype = atype
 
-    def boxes_in_rects(self, boxes, *args, **kwargs):
+    def boxes_in_rects(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (np.ndarray | torch.Tensor): same type and length with boxes, index
                 of boxes which are in areas.
@@ -187,7 +203,7 @@ class Areas(Area):
 
         boxes = Boxes(boxes)
         # (m, nb, 2)
-        vertices = boxes.get_coords(*args, **kwargs)
+        vertices = boxes.get_coords(filter=filter, frame=frame)
         # (na, m, nb)
         count = (vertices[None, :, :, :] > left_top[:, None, None, :]).all(3) * (
             vertices[None, :, :, :] < right_bottom[:, None, None, :]
@@ -196,10 +212,14 @@ class Areas(Area):
         index = count.any(1)
         return index
 
-    def boxes_in_polygons(self, boxes, *args, **kwargs):
+    def boxes_in_polygons(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (np.ndarray): index of boxes which are in areas.
         """
@@ -207,7 +227,7 @@ class Areas(Area):
             return [False]
         boxes = Boxes(boxes)
         # (m, nb, 2)
-        vertices = boxes.get_coords(*args, **kwargs)
+        vertices = boxes.get_coords(filter=filter, frame=frame)
         # NOTE: torch.Tensor -> ndarray, cause `_isPointinPolygon` support numpy for now.
         if isinstance(vertices, torch.Tensor):
             vertices = vertices.cpu().numpy()
@@ -219,21 +239,25 @@ class Areas(Area):
         index = np.asarray(count).any(1)
         return index
 
-    def boxes_in_areas(self, boxes, *args, **kwargs):
+    def filter_boxes(self, boxes, filter=None, frame=None):
         """
         Args:
             boxes (np.ndarray | torch.Tensor): xyxy format, shape: (n, 4) or (4, ).
+            filter (str | List[str] | [optional]): include `lt`,
+                `lb`, `rt`, `rb` or `center`. If None(default), then it's
+                ["lt", "lb", "rt", "rb"].
+            frame (ndarray): image for visualization.
         Return:
             index (np.ndarray | torch.Tensor): index of boxes which are in areas.
         """
-        if self.area_type == "rect":
-            return self.boxes_in_rects(boxes, *args, **kwargs)
+        if self.atype == "rect":
+            return self.boxes_in_rects(boxes, filter=filter, frame=frame)
         else:
-            return self.boxes_in_polygons(boxes, *args, **kwargs)
+            return self.boxes_in_polygons(boxes, filter=filter, frame=frame)
 
     def plot(self, frame):
         for area in self.areas:
-            if self.area_type == "rect":
+            if self.atype == "rect":
                 cv2.rectangle(frame, area[:2], area[2:], (0, 0, 255), 2, cv2.LINE_AA)
             else:
                 cv2.polylines(

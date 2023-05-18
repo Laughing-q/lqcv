@@ -2,7 +2,7 @@ from typing import List
 from lqcv.utils import ops
 
 
-__all__ = "Boxes"
+__all__ = ["Boxes"]
 _formats = ["xyxy", "xywh", "ltwh"]
 
 
@@ -22,6 +22,7 @@ class Boxes:
         assert boxes.shape[1] == 4
         # (n, 4)
         self.boxes = boxes
+        self.format = format
 
     def convert(self, format):
         """Converts bounding box format from one type to another."""
@@ -95,7 +96,7 @@ class Boxes:
     def center(self):
         """center, (n, 2)"""
         self.convert("xywh")
-        return self.boxes[:, 2:]
+        return self.boxes[:, :2]
 
     @property
     def areas(self):

@@ -7,7 +7,7 @@ def stack(arrays, dim=0):
     assert isinstance(arrays, (list, tuple))
     return (
         torch.stack(arrays, dim=dim)
-        if isinstance(arrays, torch.Tensor)
+        if isinstance(arrays[0], torch.Tensor)
         else np.stack(arrays, axis=dim)
     )
 
@@ -17,7 +17,7 @@ def cat(arrays, dim=0):
     assert isinstance(arrays, (list, tuple))
     return (
         torch.cat(arrays, dim=dim)
-        if isinstance(arrays, torch.Tensor)
+        if isinstance(arrays[0], torch.Tensor)
         else np.concatenate(arrays, axis=dim)
     )
 
