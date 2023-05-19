@@ -33,20 +33,15 @@ VID_FORMATS = [
 def verify_image_label(args):
     # Verify one image-label pair
     img_name, imgs_dir, labels_dir, num_classes = args
-    im_file = osp.join(imgs_dir, img_name) if imgs_dir is not None else None
+    im_file = osp.join(imgs_dir, img_name)
     lb_file = osp.join(labels_dir, str(Path(img_name).with_suffix('.txt')))
     nm, nf, ne, nc = 0, 0, 0, 0  # number missing, found, empty, corrupt
     try:
         # verify images
-        if im_file is not None:
-            im = cv2.imread(im_file)
-            shape = im.shape[:2]  # h, w
-            shape.append(3)    # add channel
-            suffix = Path(im_file).suffix[1:]
-            assert suffix.lower() in IMG_FORMATS, f'invalid image format {suffix}'
-        else:
-            shape = None
-            img_name = None
+        im = cv2.imread(im_file)
+        shape = im.shape  # h, w, c
+        suffix = Path(im_file).suffix[1:]
+        assert suffix.lower() in IMG_FORMATS, f'invalid image format {suffix}'
 
         # verify labels
         if os.path.isfile(lb_file):
@@ -66,6 +61,9 @@ def verify_image_label(args):
         else:
             nm = 1  # label missing
             l = np.zeros((0, 5), dtype=np.float32)
+        # NOTE: denormlize coordinates
+        l[:, 2::2] *= shape[0]   # h
+        l[:, 1::2] *= shape[1]   # w
         return img_name, l, shape, nm, nf, ne, nc, ''
     except Exception as e:
         nc = 1

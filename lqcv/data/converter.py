@@ -1,22 +1,27 @@
 from abc import ABCMeta, abstractmethod
 from lqcv.utils.log import LOGGER
+from lqcv.utils.plot import plot_one_box, colors
+from .utils import verify_image_label
 from multiprocessing.pool import Pool
 from collections import defaultdict
 from tqdm import tqdm
+from tabulate import tabulate
 import os
-from pathlib import Path
+import cv2
 
 
 class BaseConverter(metaclass=ABCMeta):
     def __init__(self, label_dir, img_dir=None, class_names=None) -> None:
         super().__init__()
-        self.imgToAnns = {}
-        self.catCount = {}
-        self.catImgCnt = {}
-        self.imgs_wh = {}
+        self.imgToAnns = defaultdict(list)
+        self.catCount = defaultdict(int)
+        self.catImgCnt = dict()
+        self.imgs_wh = dict()
         self.img_dir = img_dir
         self.label_dir = label_dir
         self.class_names = class_names
+
+        self.read_labels()
 
     @abstractmethod
     def toCOCO(self):
@@ -34,8 +39,55 @@ class BaseConverter(metaclass=ABCMeta):
     def read_labels(self):
         pass
 
-    def visualize(self):
-        pass
+    def visualize(self, save_dir=None):
+        if self.img_dir is None:
+            LOGGER.warning("`self.img_dir` is None.")
+            return 
+
+        pbar = tqdm(self.imgToAnns.items(), total=len(self.imgToAnns))
+        if save_dir is None:
+            cv2.namedWindow('p', cv2.WINDOW_NORMAL)
+        for filename, anns in pbar:
+            try:
+                image = cv2.imread(os.path.join(self.img_dir, filename))
+                if image is None:
+                    continue
+                height, width = image.shape[:2]
+                for ann in anns:
+                    cls_name = ann["class_name"]
+                    cls = self.class_names.index(cls_name)
+                    bbox = ann["bbox"]
+                    bbox = [int(b) for b in self.cxcywh2xyxy(bbox, rows=height, cols=width)]  # TODO
+                    plot_one_box(bbox, image, color=colors(int(cls)), line_thickness=2, label=None)
+            except Exception as e:
+                LOGGER.warning(e)
+                continue
+            if save_dir is not None:
+                cv2.imwrite(os.path.join(save_dir, filename), image)
+            else:
+                cv2.imshow('p', image)
+                if cv2.waitKey(0) == ord('q'):
+                    break
+
+    def __repr__(self):
+        total_img = 0
+        total_obj = 0
+        cat_table = []
+        for i, c in enumerate(self.class_names):
+            if c in self.catImgCnt and c in self.catCount:
+                total_img += self.catImgCnt[c]
+                total_obj += self.catCount[c]
+                cat_table.append((str(i), str(c), self.catImgCnt[c], self.catCount[c]))
+            else:
+                cat_table.append((str(i), str(c), 0, 0))
+
+        cat_table += [(" ", "total", total_img, total_obj)]
+        return "\n" + tabulate(
+            cat_table,
+            headers=["Id", "Category", "ImageCnt", "ClassCnt"],
+            tablefmt="fancy_grid",
+            missingval="None",
+        )
 
 
 class YOLOConverter(BaseConverter):
@@ -45,7 +97,7 @@ class YOLOConverter(BaseConverter):
         Args:
             label_dir (str): The directory of .txt labels.
             class_names (str): Class names.
-            img_dir (str | optional): Image directory, 
+            img_dir (str | optional): Image directory,
                 if it's None then assume the structure is like the following example:
                     root/
                     ├── images
@@ -54,26 +106,27 @@ class YOLOConverter(BaseConverter):
         assert os.path.exists(label_dir), f"The directory '{label_dir}' does not exist."
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
-            assert os.path.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
+            assert os.path.exists(
+                img_dir
+            ), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, img_dir, class_names)
 
     def read_labels(self):
-        LOGGER.info(f"Read yolo labels from {self.labels_dir}...")
-        imgs_wh = {}
-        imgToAnns, catImgCnt, catCount = defaultdict(list), defaultdict(list), defaultdict(int)
+        LOGGER.info(f"Read yolo labels from {self.label_dir}...")
 
-        img_names = os.listdir(self.imgs_dir)
+        catImg = defaultdict(list)
+        img_names = os.listdir(self.img_dir)
         ni = len(img_names)
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
-        desc = f"Scanning '{self.labels_dir}' images and labels..."
+        desc = f"Scanning '{self.label_dir}' images and labels..."
         with Pool() as pool:
             pbar = tqdm(
                 pool.imap_unordered(
-                    self.verify_image_label,
+                    verify_image_label,
                     zip(
                         img_names,
-                        [self.imgs_dir] * ni,
-                        [self.labels_dir] * ni,
+                        [self.img_dir] * ni,
+                        [self.label_dir] * ni,
                         [len(self.class_names)] * ni,
                     ),
                 ),
@@ -86,21 +139,37 @@ class YOLOConverter(BaseConverter):
                 ne += ne_f
                 nc += nc_f
                 if img_name:
-                    imgs_wh[img_name] = {"width": shape[0], "height": shape[1], "channel": shape[2]}
-                if label is not None:
+                    self.imgs_wh[img_name] = {
+                        "width": shape[0],
+                        "height": shape[1],
+                        "channel": shape[2],
+                    }
                     for l in label:
                         category_id = int(l[0])
                         bbox = l[1:]
                         name = self.class_names[int(category_id)]
-                        imgToAnns[img_name].append(
+                        self.imgToAnns[img_name].append(
                             {
                                 "class_name": name,
                                 "bbox": bbox,
                             }
                         )
-                        catCount[name] += 1
-                        catImgCnt[name].append(img_name)
+                        self.catCount[name] += 1
+                        if img_name not in catImg[name]:
+                            catImg[name].append(img_name)
+                # TODO: self.errors
                 if msg:
                     msgs.append(msg)
                 pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
-        return imgToAnns, catImgCnt, catCount, imgs_wh
+        # update catImgCnt
+        for name, imgCnt in catImg.items():
+            self.catImgCnt[name] = len(set(imgCnt))
+
+    def toCOCO(self):
+        pass
+
+    def toXML(self):
+        pass
+
+    def toYOLO(self):
+        pass
