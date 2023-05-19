@@ -4,6 +4,7 @@ from lqcv.data.converter import YOLOConverter
 def test_yolo(label_dir, class_names, img_dir=None):
     converter = YOLOConverter(label_dir, class_names, img_dir)
     print(converter)
+    converter.visualize()
 
 
 if __name__ == "__main__":

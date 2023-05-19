@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from lqcv.bbox import Boxes
 from lqcv.utils.log import LOGGER
 from lqcv.utils.plot import plot_one_box, colors
 from .utils import verify_image_label
@@ -6,6 +7,7 @@ from multiprocessing.pool import Pool
 from collections import defaultdict
 from tqdm import tqdm
 from tabulate import tabulate
+import numpy as np
 import os
 import cv2
 
@@ -13,7 +15,7 @@ import cv2
 class BaseConverter(metaclass=ABCMeta):
     def __init__(self, label_dir, img_dir=None, class_names=None) -> None:
         super().__init__()
-        self.imgToAnns = defaultdict(list)
+        self.labels = list()
         self.catCount = defaultdict(int)
         self.catImgCnt = dict()
         self.imgs_wh = dict()
@@ -42,31 +44,29 @@ class BaseConverter(metaclass=ABCMeta):
     def visualize(self, save_dir=None):
         if self.img_dir is None:
             LOGGER.warning("`self.img_dir` is None.")
-            return 
+            return
 
-        pbar = tqdm(self.imgToAnns.items(), total=len(self.imgToAnns))
+        pbar = tqdm(self.labels, total=len(self.labels))
         if save_dir is None:
-            cv2.namedWindow('p', cv2.WINDOW_NORMAL)
-        for filename, anns in pbar:
+            cv2.namedWindow("p", cv2.WINDOW_NORMAL)
+        for label in pbar:
             try:
+                filename = label["img_name"]
                 image = cv2.imread(os.path.join(self.img_dir, filename))
                 if image is None:
                     continue
-                height, width = image.shape[:2]
-                for ann in anns:
-                    cls_name = ann["class_name"]
-                    cls = self.class_names.index(cls_name)
-                    bbox = ann["bbox"]
-                    bbox = [int(b) for b in self.cxcywh2xyxy(bbox, rows=height, cols=width)]  # TODO
-                    plot_one_box(bbox, image, color=colors(int(cls)), line_thickness=2, label=None)
+                cls, bbox = label["cls"], label["bbox"]
+                bbox.convert("xyxy")
+                for i, c in enumerate(cls):
+                    plot_one_box(bbox.data[i], image, color=colors(int(c)), line_thickness=2, label=None)
             except Exception as e:
                 LOGGER.warning(e)
                 continue
             if save_dir is not None:
                 cv2.imwrite(os.path.join(save_dir, filename), image)
             else:
-                cv2.imshow('p', image)
-                if cv2.waitKey(0) == ord('q'):
+                cv2.imshow("p", image)
+                if cv2.waitKey(0) == ord("q"):
                     break
 
     def __repr__(self):
@@ -139,21 +139,11 @@ class YOLOConverter(BaseConverter):
                 ne += ne_f
                 nc += nc_f
                 if img_name:
-                    self.imgs_wh[img_name] = {
-                        "width": shape[0],
-                        "height": shape[1],
-                        "channel": shape[2],
-                    }
-                    for l in label:
-                        category_id = int(l[0])
-                        bbox = l[1:]
-                        name = self.class_names[int(category_id)]
-                        self.imgToAnns[img_name].append(
-                            {
-                                "class_name": name,
-                                "bbox": bbox,
-                            }
-                        )
+                    cls = label[:, 0]
+                    bbox = Boxes(label[:, 1:], format="xywh")
+                    self.labels.append(dict(img_name=img_name, shape=shape, cls=cls, bbox=bbox))
+                    for c in cls:
+                        name = self.class_names[int(c)]
                         self.catCount[name] += 1
                         if img_name not in catImg[name]:
                             catImg[name].append(img_name)
@@ -163,7 +153,7 @@ class YOLOConverter(BaseConverter):
                 pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
         # update catImgCnt
         for name, imgCnt in catImg.items():
-            self.catImgCnt[name] = len(set(imgCnt))
+            self.catImgCnt[name] = len(imgCnt)
 
     def toCOCO(self):
         pass
