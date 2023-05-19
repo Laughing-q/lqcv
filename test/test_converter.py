@@ -20,6 +20,7 @@ if __name__ == "__main__":
     # )
     test_xml(
         label_dir="/d/dataset/ultralytics_test/test/suit_mask/xmls",
-        class_names=["mask", "unmask", "suit", "unsuit"],
+        # class_names=["mask", "unmask", "suit", "unsuit"],
+        class_names=None,
         img_dir=None
     )
