@@ -153,3 +153,27 @@ class Boxes:
 
     def __len__(self):
         return len(self.boxes)
+
+    def __getitem__(self, index) -> 'Boxes':
+        """
+        Retrieve a specific bounding box or a set of bounding boxes using indexing.
+
+        Args:
+            index (int, slice, or np.ndarray): The index, slice, or boolean array to select
+                                               the desired bounding boxes.
+
+        Returns:
+            Bboxes: A new Bboxes object containing the selected bounding boxes.
+
+        Raises:
+            AssertionError: If the indexed bounding boxes do not form a 2-dimensional matrix.
+
+        Note:
+            When using boolean indexing, make sure to provide a boolean array with the same
+            length as the number of bounding boxes.
+        """
+        if isinstance(index, int):
+            return Boxes(self.bboxes[index].view(1, -1))
+        b = self.bboxes[index]
+        assert b.ndim == 2, f'Indexing on Bboxes with {index} failed to return a matrix!'
+        return Boxes(b)
