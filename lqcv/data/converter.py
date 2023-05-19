@@ -10,7 +10,7 @@ from tabulate import tabulate
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import numpy as np
-import glob
+import json
 import os.path as osp
 import os
 import cv2
@@ -24,10 +24,9 @@ class BaseConverter(metaclass=ABCMeta):
         self.catImgCnt = dict()
         self.imgs_wh = dict()
         self.img_dir = img_dir
-        self.label_dir = label_dir
         self.class_names = class_names
 
-        self.read_labels()
+        self.read_labels(label_dir)
 
     # @abstractmethod
     # def toCOCO(self):
@@ -42,7 +41,7 @@ class BaseConverter(metaclass=ABCMeta):
     #     pass
 
     @abstractmethod
-    def read_labels(self):
+    def read_labels(self, label_dir):
         pass
 
     def visualize(self, save_dir=None):
@@ -121,14 +120,14 @@ class YOLOConverter(BaseConverter):
             ), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir)
 
-    def read_labels(self):
-        LOGGER.info(f"Read labels from {self.label_dir}...")
+    def read_labels(self, label_dir):
+        LOGGER.info(f"Read labels from {label_dir}...")
 
         catImg = defaultdict(list)
         img_names = os.listdir(self.img_dir)
         ni = len(img_names)
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
-        desc = f"Scanning '{self.label_dir}' images and labels..."
+        desc = f"Scanning '{label_dir}' images and labels..."
         with Pool() as pool:
             pbar = tqdm(
                 pool.imap_unordered(
@@ -136,7 +135,7 @@ class YOLOConverter(BaseConverter):
                     zip(
                         img_names,
                         [self.img_dir] * ni,
-                        [self.label_dir] * ni,
+                        [label_dir] * ni,
                         [self.class_names] * ni,
                     ),
                 ),
@@ -226,8 +225,8 @@ class XMLConverter(YOLOConverter):
             ), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir)
 
-    def read_labels(self):
-        super().read_labels()
+    def read_labels(self, label_dir):
+        super().read_labels(label_dir)
         # update class_names
         if self.class_names is None:
             self.class_names = list(self.catCount.keys()) 
@@ -296,3 +295,25 @@ class XMLConverter(YOLOConverter):
             nc += 1
             msg = f"WARNING: Ignoring corrupted xmls: {e}"
             return [None, None, None, None, nm, nf, ne, nc, msg]
+
+
+class COCOConverrter(BaseConverter):
+    def __init__(self, json_file, img_dir=None) -> None:
+        """COCOConverter.
+
+        Args:
+            json_file (str): The json file of coco.
+            img_dir (str | optional): Image directory,
+                if it's None then assume the structure is like the following example:
+                    root/
+                    ├── images
+                    ├── json_file
+        """
+        if img_dir is None:
+            img_dir = Path(json_file).parent / "images"
+            assert img_dir.exists(), f"The directory '{str(img_dir)}' does not exist, please pass `img_dir` arg."
+        super().__init__(json_file, img_dir=img_dir)
+
+    def read_labels(self, json_file):
+        with open(json_file, "r") as f:
+            labels = json.load(f)
