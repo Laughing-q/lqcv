@@ -51,6 +51,7 @@ def similarity(img_dir, remove_dir, threshold=0.95, count_only=False, start=0, e
         values = np.loadtxt("hashValue.txt", dtype=np.uint8)[start:end]
         print(values.shape)
         removed_idx = []
+        counter = 0
 
         for i, v in tqdm(enumerate(values), total=len(values)):
             d = compare(v, values)  # distance
