@@ -101,13 +101,24 @@ class ReadStreams:
 class ReadOneStream:
     """Read one Stream, modified from yolov5, support one streams reading and saving."""
 
-    def __init__(self, source, vid_stride=1):
+    def __init__(self, source, vid_stride=1, imgsz=None, im_only=False):
+        """ReadOneStream
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            vid_stride (int | optional): Video stride.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
         self.mode = "stream"
 
         self.vid_path, self.vid_writer = None, None
         self.fps, self.frames = 0, 0
         self.source = source  # clean source names for later
         self.vid_stride = vid_stride
+        self.imgsz = imgsz
+        self.im_only = im_only
 
         # Start thread to read frames from video stream
         print(f"{1}/{1}: {source}... ", end="")
@@ -138,7 +149,10 @@ class ReadOneStream:
             cv2.destroyAllWindows()
             raise StopIteration
 
-        return img0, self.source, " "
+        if self.imgsz:
+            h, w = self.imgsz
+            img0 = cv2.resize(img0, (w, h))
+        return img0 if self.im_only else (img0, self.source, " ")
 
     def __len__(self):
         return 1
@@ -163,7 +177,16 @@ class ReadOneStream:
 class ReadVideosAndImages:
     """Read Videos and Images, modified from yolov5"""
 
-    def __init__(self, source: str, vid_stride=1):
+    def __init__(self, source: str, vid_stride=1, imgsz=None, im_only=False):
+        """ReadVideosAndImages
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            vid_stride (int | optional): Video stride.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
         p = str(Path(source).resolve())  # os-agnostic absolute path
         if "*" in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
@@ -185,6 +208,8 @@ class ReadVideosAndImages:
         self.video_flag = [False] * ni + [True] * nv
         self.vid_stride = vid_stride
         self.mode = "image"
+        self.imgsz = imgsz
+        self.im_only = im_only
         if any(videos):
             self.new_video(videos[0])  # new video
         else:
@@ -229,7 +254,10 @@ class ReadVideosAndImages:
             assert img0 is not None, "Image Not Found " + path
             s = f"image {self.count}/{self.nf} "
 
-        return img0, path, s
+        if self.imgsz:
+            h, w = self.imgsz
+            img0 = cv2.resize(img0, (w, h))
+        return img0 if self.im_only else (img0, path, s)
 
     def new_video(self, path):
         self.frame = 0

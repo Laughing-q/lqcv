@@ -1,5 +1,11 @@
 import cv2
 
+LQCV_PAUSE=False
+def waitKey(delay=1):
+    global LQCV_PAUSE
+    key = cv2.waitKey(0 if LQCV_PAUSE else delay)
+    LQCV_PAUSE = True if key == ord(' ') else False
+    return key
 
 class Colors:
     # Ultralytics color palette https://ultralytics.com/
