@@ -24,6 +24,7 @@ class XMLConverter(YOLOConverter):
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
         super().__init__(label_dir, class_names, img_dir)
+        self.format = 'xml'
 
     def read_labels(self, label_dir):
         super().read_labels(label_dir)

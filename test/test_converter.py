@@ -4,13 +4,21 @@ from lqcv.data.converter import YOLOConverter, XMLConverter, COCOConverter
 def test_yolo(label_dir, class_names, img_dir=None):
     converter = YOLOConverter(label_dir, class_names, img_dir)
     print(converter)
-    converter.visualize()
+    # converter.visualize()
+    converter.toCOCO(save_file="label.json")
+    coco = COCOConverter("label.json", converter.img_dir)
+    print(coco)
+    coco.visualize()
 
 
 def test_xml(label_dir, class_names, img_dir=None):
     converter = XMLConverter(label_dir, class_names, img_dir)
     print(converter)
-    converter.visualize()
+    # converter.visualize()
+    converter.toCOCO(save_file="label.json")
+    coco = COCOConverter("label.json", converter.img_dir)
+    print(coco)
+    coco.visualize()
 
 
 def test_coco(json_file, img_dir=None):
@@ -26,14 +34,20 @@ if __name__ == "__main__":
     #     img_dir=None
     # )
 
-    # test_xml(
-    #     label_dir="/d/dataset/ultralytics_test/test/suit_mask/xmls",
-    #     # class_names=["mask", "unmask", "suit", "unsuit"],
-    #     class_names=None,
-    #     img_dir=None
+    test_xml(
+        label_dir="/d/dataset/ultralytics_test/test/suit_mask/xmls",
+        # class_names=["mask", "unmask", "suit", "unsuit"],
+        class_names=None,
+        img_dir=None
+    )
+
+    # test_coco(
+    #     json_file="/d/dataset/COCO/annotations/instances_val2017.json",
+    #     img_dir="/d/dataset/COCO/images/val2017",
     # )
 
-    test_coco(
-        json_file="/d/dataset/ultralytics_test/sub_mask_sub/labels/train.json",
-        img_dir="/d/dataset/ultralytics_test/sub_mask_sub/images/train",
-    )
+    # official coco dataset
+    # test_coco(
+    #     json_file="/d/dataset/COCO/annotations/instances_val2017.json",
+    #     img_dir="/d/dataset/COCO/images/val2017",
+    # )

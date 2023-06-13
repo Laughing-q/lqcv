@@ -3,9 +3,12 @@ from lqcv.utils.log import LOGGER
 from lqcv.utils.plot import plot_one_box, colors
 from collections import defaultdict
 from tqdm import tqdm
+from pathlib import Path
 from tabulate import tabulate
 import os.path as osp
 import cv2
+import shutil
+import json
 
 
 
@@ -20,25 +23,95 @@ class BaseConverter(metaclass=ABCMeta):
 
         self.read_labels(label_dir)
 
-    # @abstractmethod
-    # def toCOCO(self):
-    #     pass
-    #
-    # @abstractmethod
-    # def toXML(self):
-    #     pass
-    #
-    # @abstractmethod
-    # def toYOLO(self):
-    #     pass
+    def toCOCO(self, 
+               save_file, 
+               classes=None, 
+               im_dir=None):
+        """Convert labels to coco format.
+
+        Args:
+            save_file (str): Save path of the dst json file.
+            classes (Optiona | List[str]): Filter the class if given.
+            im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
+        """
+        if self.format == "coco" and classes is None:
+            LOGGER.info("Current format is COCO! there's no need to convert it since `classes` is also `None`.")
+            return
+        class_name = classes if classes is not None else self.class_names
+        cocoDict = dict()
+        images = list()
+        annotations = list()
+        objid = 1
+        copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+
+        pbar = tqdm(enumerate(self.labels), total=len(self.labels))
+        pbar.desc = "Convert YOLO to COCO: "
+        for idx, label in pbar:
+            h, w = label["shape"][:2]
+            image, sub_annotations = dict(), []
+            image['file_name'] = label["img_name"]
+
+            image['height'] = h
+            image['width'] = w
+            image['id'] = idx
+
+            cls, bboxes = label["cls"], label["bbox"]
+            bboxes.convert("ltwh")
+            for i, c in enumerate(cls):
+                name = self.class_names[int(c)]
+                if name not in class_name:
+                    LOGGER.info(f"`{name}` not in {class_name}, ignore")
+                    continue
+                category_id = class_name.index(name)
+
+                annotation = dict()
+                annotation["image_id"] = idx
+                annotation["ignore"] = 0
+                annotation["iscrowd"] = 0
+                # xyxy -> tlwh
+                x, y, w, h = bboxes[i].data.squeeze().tolist()
+
+                annotation["bbox"] = [x, y, w, h]
+                annotation["area"] = float(w * h)
+                annotation["category_id"] = category_id
+                annotation["id"] = objid
+                objid += 1
+                annotation["segmentation"] = [[x, y, x, (y + h), (x + w), (y + h), (x + w), y]]
+                sub_annotations.append(annotation)
+
+            if len(sub_annotations):
+                images.append(image)
+                annotations += sub_annotations
+                if copy_im:
+                    shutil.copy(osp.join(self.img_dir, label["img_name"]), im_dir)
+
+        cocoDict["images"] = images
+        cocoDict["annotations"] = annotations
+        cocoDict["categories"] = [{"supercategory": "none", "id": c, 
+                                   "name": class_name[c]} for c in range(len(class_name))]
+        cocoDict["type"] = "instances"
+
+        # print attrDict
+        Path(save_file).parent.mkdir(parents=True, exist_ok=True)
+        jsonString = json.dumps(cocoDict, indent=2)
+        with open(save_file, "w") as f:
+            f.write(jsonString)
+
+        LOGGER.info(f"Convert results: {len(images)}/{len(self.labels)}")
+
+    def toXML(self):
+        pass
+
+    def toYOLO(self):
+        pass
 
     @abstractmethod
     def read_labels(self, label_dir):
         pass
 
     def visualize(self, save_dir=None):
-        if self.img_dir is None:
-            LOGGER.warning("`self.img_dir` is None.")
+        if not osp.exists(self.img_dir):
+            LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
             return
 
         pbar = tqdm(self.labels, total=len(self.labels))

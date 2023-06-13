@@ -31,6 +31,7 @@ class COCOConverter(BaseConverter):
                              None, 61, None, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, None, 73, 74, 75, 76, 77, 78, 
                              79, None]
         super().__init__(json_file, img_dir=img_dir)
+        self.format = 'coco'
 
     def read_labels(self, json_file):
         is_coco = True if "train2017" in json_file or "val2017" in json_file else False

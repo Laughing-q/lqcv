@@ -21,7 +21,7 @@ class Boxes:
         assert boxes.ndim == 2
         assert boxes.shape[1] == 4
         # (n, 4)
-        self.boxes = boxes
+        self._boxes = boxes
         self.format = format
 
     def convert(self, format):
@@ -33,23 +33,23 @@ class Boxes:
             return
         elif self.format == "xyxy":
             boxes = (
-                ops.xyxy2xywh(self.boxes)
+                ops.xyxy2xywh(self._boxes)
                 if format == "xywh"
-                else ops.xyxy2ltwh(self.boxes)
+                else ops.xyxy2ltwh(self._boxes)
             )
         elif self.format == "xywh":
             boxes = (
-                ops.xywh2xyxy(self.boxes)
+                ops.xywh2xyxy(self._boxes)
                 if format == "xyxy"
-                else ops.xywh2ltwh(self.boxes)
+                else ops.xywh2ltwh(self._boxes)
             )
         else:
             boxes = (
-                ops.ltwh2xyxy(self.boxes)
+                ops.ltwh2xyxy(self._boxes)
                 if format == "xyxy"
-                else ops.ltwh2xywh(self.boxes)
+                else ops.ltwh2xywh(self._boxes)
             )
-        self.boxes = boxes
+        self._boxes = boxes
         self.format = format
 
     @classmethod
@@ -72,43 +72,48 @@ class Boxes:
     def lt(self):
         """left top, (n, 2)"""
         self.convert("xyxy")
-        return self.boxes[:, :2]
+        return self._boxes[:, :2]
 
     @property
     def rt(self):
         """right top, (n, 2)"""
         self.convert("xyxy")
-        return ops.stack([self.boxes[:, 2], self.boxes[:, 1]], 1)
+        return ops.stack([self._boxes[:, 2], self._boxes[:, 1]], 1)
 
     @property
     def lb(self):
         """left bottom, (n, 2)"""
         self.convert("xyxy")
-        return ops.stack([self.boxes[:, 0], self.boxes[:, 3]], 1)
+        return ops.stack([self._boxes[:, 0], self._boxes[:, 3]], 1)
 
     @property
     def rb(self):
         self.convert("xyxy")
         """right bottom, (n, 2)"""
-        return self.boxes[:, 2:]
+        return self._boxes[:, 2:]
 
     @property
     def center(self):
         """center, (n, 2)"""
         self.convert("xywh")
-        return self.boxes[:, :2]
+        return self._boxes[:, :2]
 
     @property
     def areas(self):
-        self.convert("xyxy")
-        areas = (self.boxes[:, 2] - self.boxes[:, 0]) * (
-            self.boxes[:, 3] - self.boxes[:, 1]
+        format = self.format
+        if format != "xyxy":
+            self.convert("xyxy")
+        areas = (self._boxes[:, 2] - self._boxes[:, 0]) * (
+            self._boxes[:, 3] - self._boxes[:, 1]
         )
+        # convert back to the original format
+        if format != "xyxy":
+            self.convert(format)
         return areas
 
     @property
     def data(self):
-        return self.boxes
+        return self._boxes
 
     def get_coords(self, filter=None, frame=None):
         """Get the coordinates of self.boxes.
@@ -152,7 +157,7 @@ class Boxes:
         return coordinates
 
     def __len__(self):
-        return len(self.boxes)
+        return len(self._boxes)
 
     def __getitem__(self, index) -> 'Boxes':
         """
@@ -172,8 +177,10 @@ class Boxes:
             When using boolean indexing, make sure to provide a boolean array with the same
             length as the number of bounding boxes.
         """
-        if isinstance(index, int):
-            return Boxes(self.bboxes[index].view(1, -1))
-        b = self.bboxes[index]
-        assert b.ndim == 2, f'Indexing on Bboxes with {index} failed to return a matrix!'
-        return Boxes(b)
+        b = self._boxes[index]
+        return Boxes(b, self.format)
+
+    @property
+    def data(self):
+        """The original data."""
+        return self._boxes

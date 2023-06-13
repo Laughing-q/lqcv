@@ -16,3 +16,4 @@ dist/
 runs/
 
 *.txt
+*.json
