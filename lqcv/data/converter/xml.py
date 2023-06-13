@@ -1,4 +1,3 @@
-from lqcv.utils.log import LOGGER
 from .yolo import YOLOConverter
 from lqcv.bbox import Boxes
 from pathlib import Path
@@ -22,11 +21,8 @@ class XMLConverter(YOLOConverter):
                     ├── images
                     ├── xmls
         """
-        assert osp.exists(label_dir), f"The directory '{label_dir}' does not exist."
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
-        if not osp.exists(img_dir):
-            LOGGER.warning(f"The directory '{img_dir}' does not exist, `visualize` is not available.")
         super().__init__(label_dir, class_names, img_dir)
 
     def read_labels(self, label_dir):

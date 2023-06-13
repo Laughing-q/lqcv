@@ -1,4 +1,4 @@
-from lqcv.data.converter import YOLOConverter, XMLConverter, COCOConverrter
+from lqcv.data.converter import YOLOConverter, XMLConverter, COCOConverter
 
 
 def test_yolo(label_dir, class_names, img_dir=None):
@@ -14,8 +14,9 @@ def test_xml(label_dir, class_names, img_dir=None):
 
 
 def test_coco(json_file, img_dir=None):
-    converter = COCOConverrter(json_file, img_dir)
+    converter = COCOConverter(json_file, img_dir)
     print(converter)
+    converter.visualize()
 
 
 if __name__ == "__main__":
@@ -33,6 +34,6 @@ if __name__ == "__main__":
     # )
 
     test_coco(
-        json_file="/d/dataset/COCO/annotations/instances_val2017.json",
-        img_dir=None,
+        json_file="/d/dataset/ultralytics_test/sub_mask_sub/labels/train.json",
+        img_dir="/d/dataset/ultralytics_test/sub_mask_sub/images/train",
     )
