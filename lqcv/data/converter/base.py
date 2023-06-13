@@ -106,7 +106,7 @@ class BaseConverter(metaclass=ABCMeta):
                save_dir, 
                classes=None, 
                im_dir=None):
-        """Convert labels to coco format.
+        """Convert labels to xml format.
 
         Args:
             save_dir (str): Save dir for the dst xml files.
@@ -150,8 +150,61 @@ class BaseConverter(metaclass=ABCMeta):
 
         LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
 
-    def toYOLO(self):
-        pass
+    def toYOLO(self, 
+               save_dir, 
+               classes=None, 
+               im_dir=None):
+        """Convert labels to yolo format.
+
+        Args:
+            save_dir (str): Save dir for the dst txt files.
+            classes (Optiona | List[str]): Filter the class if given.
+            im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
+        """
+        if self.format == "yolo" and classes is None:
+            LOGGER.info("Current format is YOLO! there's no need to convert it since `classes` is also `None`.")
+            return
+        class_name = classes if classes is not None else self.class_names
+        os.makedirs(save_dir, exist_ok=True)
+        copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+
+        pbar = tqdm(self.labels, total=len(self.labels))
+        pbar.desc = f"Convert {self.format.upper()} to YOLO: "
+        for label in pbar:
+            h, w = label["shape"][:2]
+            cls, bboxes = label["cls"], label["bbox"]
+            bboxes.convert("xywh")
+            filename = label["img_name"]
+
+            label_name = str(Path(filename).with_suffix('.txt'))
+            label_path = osp.join(save_dir, label_name)
+
+            label = ""
+            for i, c in enumerate(cls):
+                name = self.class_names[int(c)]
+
+                if name not in class_name:
+                    LOGGER.info(f"`{name}` not in {class_name}, ignore")
+                    continue
+
+                cx, cy, bw, bh = bboxes[i].data.squeeze().tolist()
+                category_id = class_name.index(name)
+                cx /= w
+                cy /= h
+                bw /= w
+                bh /= h
+
+                label += "%s %s %s %s %s\n" % (category_id, cx, cy, bw, bh)
+
+            if len(label):
+                f_label = open(label_path, 'w')
+                f_label.write(label)
+                f_label.close()
+                if copy_im:
+                    shutil.copy(osp.join(self.img_dir, filename), im_dir)
+
+        LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
+
 
     @abstractmethod
     def read_labels(self, label_dir):
