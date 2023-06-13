@@ -6,6 +6,7 @@ from tqdm import tqdm
 from pathlib import Path
 from tabulate import tabulate
 import os.path as osp
+import os
 import cv2
 import shutil
 import json
@@ -15,6 +16,8 @@ import json
 class BaseConverter(metaclass=ABCMeta):
     def __init__(self, label_dir, class_names=None, img_dir=None) -> None:
         super().__init__()
+        assert osp.exists(label_dir), f"The directory/file '{label_dir}' does not exist."
+
         self.labels = list()
         self.catCount = defaultdict(int)
         self.catImgCnt = dict()
@@ -45,7 +48,7 @@ class BaseConverter(metaclass=ABCMeta):
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
 
         pbar = tqdm(enumerate(self.labels), total=len(self.labels))
-        pbar.desc = "Convert YOLO to COCO: "
+        pbar.desc = f"Convert {self.format.upper()} to COCO: "
         for idx, label in pbar:
             h, w = label["shape"][:2]
             image, sub_annotations = dict(), []
@@ -99,8 +102,53 @@ class BaseConverter(metaclass=ABCMeta):
 
         LOGGER.info(f"Convert results: {len(images)}/{len(self.labels)}")
 
-    def toXML(self):
-        pass
+    def toXML(self, 
+               save_dir, 
+               classes=None, 
+               im_dir=None):
+        """Convert labels to coco format.
+
+        Args:
+            save_dir (str): Save dir for the dst xml files.
+            classes (Optiona | List[str]): Filter the class if given.
+            im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
+        """
+        if self.format == "xml" and classes is None:
+            LOGGER.info("Current format is COCO! there's no need to convert it since `classes` is also `None`.")
+            return
+        class_name = classes if classes is not None else self.class_names
+        os.makedirs(save_dir, exist_ok=True)
+        copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+
+        anno_temp, obj_temp = self.get_xml_template()
+        pbar = tqdm(enumerate(self.labels), total=len(self.labels))
+        pbar.desc = f"Convert {self.format.upper()} to XML: "
+        for label in pbar:
+            h, w, c = label["shape"]
+            cls, bboxes = label["cls"], label["bbox"]
+            bboxes.convert("xyxy")
+            filename = label["img_name"]
+
+            obj_str = ''
+            xml_name = str(Path(filename).with_suffix('.xml'))
+            xml_path = osp.join(save_dir, xml_name)
+            for i, c in enumerate(cls):
+                name = self.class_names[int(c)]
+
+                if name not in class_name:
+                    LOGGER.info(f"`{name}` not in {class_name}, ignore")
+                    continue
+
+                bbox = bboxes[i].data.squeeze().tolist()
+                obj_str += obj_temp % (name, *bbox)
+            if len(obj_str):
+                f_xml = open(xml_path, 'w')
+                f_xml.write(anno_temp % (filename, w, h, c, obj_str))
+                f_xml.close()
+                if copy_im:
+                    shutil.copy(osp.join(self.img_dir, label["img_name"]), im_dir)
+
+        LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
 
     def toYOLO(self):
         pass
@@ -142,6 +190,47 @@ class BaseConverter(metaclass=ABCMeta):
                 cv2.imshow("p", image)
                 if cv2.waitKey(0) == ord("q"):
                     break
+
+    def get_xml_template(self):
+        anntemp = """\
+<annotation>
+    <folder>VOC</folder>
+    <filename>%s</filename>
+    <source>
+        <database>My Database</database>
+        <annotation>COCO</annotation>
+        <image>flickr</image>
+        <flickrid>NULL</flickrid>
+    </source>
+    <owner>
+        <flickrid>NULL</flickrid>
+        <name>company</name>
+    </owner>
+    <size>
+        <width>%d</width>
+        <height>%d</height>
+        <depth>%d</depth>
+    </size>
+    <segmented>0</segmented>
+%s
+</annotation>
+        """
+        objtemp = """\
+    <object>
+        <name>%s</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <occluded>0</occluded>
+        <bndbox>
+            <xmin>%d</xmin>
+            <ymin>%d</ymin>
+            <xmax>%d</xmax>
+            <ymax>%d</ymax>
+        </bndbox>
+    </object>
+        """
+        return anntemp, objtemp
 
     def __repr__(self):
         total_img = 0

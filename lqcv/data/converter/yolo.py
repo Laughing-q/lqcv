@@ -25,7 +25,6 @@ class YOLOConverter(BaseConverter):
                     ├── images
                     ├── labels
         """
-        assert osp.exists(label_dir), f"The directory '{label_dir}' does not exist."
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
         assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
