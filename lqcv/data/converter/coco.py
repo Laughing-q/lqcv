@@ -22,4 +22,5 @@ class COCOConverrter(BaseConverter):
 
     def read_labels(self, json_file):
         with open(json_file, "r") as f:
-            labels = json.load(f)
+            anno = json.load(f)
+        print()

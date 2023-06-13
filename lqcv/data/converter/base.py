@@ -15,7 +15,6 @@ class BaseConverter(metaclass=ABCMeta):
         self.labels = list()
         self.catCount = defaultdict(int)
         self.catImgCnt = dict()
-        self.imgs_wh = dict()
         self.img_dir = img_dir
         self.class_names = class_names
 

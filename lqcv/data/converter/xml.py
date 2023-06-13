@@ -1,3 +1,4 @@
+from lqcv.utils.log import LOGGER
 from .yolo import YOLOConverter
 from lqcv.bbox import Boxes
 from pathlib import Path
@@ -24,9 +25,8 @@ class XMLConverter(YOLOConverter):
         assert osp.exists(label_dir), f"The directory '{label_dir}' does not exist."
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
-            assert osp.exists(
-                img_dir
-            ), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
+        if not osp.exists(img_dir):
+            LOGGER.warning(f"The directory '{img_dir}' does not exist, `visualize` is not available.")
         super().__init__(label_dir, class_names, img_dir)
 
     def read_labels(self, label_dir):
@@ -62,9 +62,7 @@ class XMLConverter(YOLOConverter):
                         h = int(height.text)
                         w = int(width.text)
                     except:
-                        assert (
-                            img_dir is not None
-                        ), f"can't get `width` or `height` info from {xml_file}"
+                        assert (img_dir is not None), f"can't get `width` or `height` info from {xml_file}"
                         img_path = osp.join(img_dir, filename)
                         assert osp.exists(img_path), \
                                 f"can't get `width` or `height` info from {xml_file} also can't find img file {img_path}"

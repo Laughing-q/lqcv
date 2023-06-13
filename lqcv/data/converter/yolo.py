@@ -28,9 +28,7 @@ class YOLOConverter(BaseConverter):
         assert osp.exists(label_dir), f"The directory '{label_dir}' does not exist."
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
-            assert osp.exists(
-                img_dir
-            ), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
+        assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir)
 
     def read_labels(self, label_dir):
