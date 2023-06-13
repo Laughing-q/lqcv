@@ -121,7 +121,7 @@ class BaseConverter(metaclass=ABCMeta):
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
 
         anno_temp, obj_temp = self.get_xml_template()
-        pbar = tqdm(enumerate(self.labels), total=len(self.labels))
+        pbar = tqdm(self.labels, total=len(self.labels))
         pbar.desc = f"Convert {self.format.upper()} to XML: "
         for label in pbar:
             h, w, c = label["shape"]

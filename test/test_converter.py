@@ -5,10 +5,18 @@ def test_yolo(label_dir, class_names, img_dir=None):
     converter = YOLOConverter(label_dir, class_names, img_dir)
     print(converter)
     # converter.visualize()
-    converter.toCOCO(save_file="label.json")
-    coco = COCOConverter("label.json", converter.img_dir)
-    print(coco)
-    coco.visualize()
+
+    # to COCO
+    # converter.toCOCO(save_file="label.json")
+    # coco = COCOConverter("label.json", converter.img_dir)
+    # print(coco)
+    # coco.visualize()
+
+    # to XML
+    converter.toXML(save_dir="./xmls")
+    xml = XMLConverter("./xmls", img_dir=converter.img_dir)
+    print(xml)
+    xml.visualize()
 
 
 def test_xml(label_dir, class_names, img_dir=None):
