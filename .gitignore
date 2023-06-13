@@ -10,3 +10,11 @@ __pycache__/
 ./weights
 *.mp4
 *.avi
+*.jpg
+*.png
+dist/
+runs/
+
+*.txt
+*.json
+*.xml

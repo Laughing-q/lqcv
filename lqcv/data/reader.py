@@ -4,15 +4,7 @@ import cv2
 import time
 from pathlib import Path
 from threading import Thread
-from ..image.utils import IMG_FORMATS
-from ..video.utils import VID_FORMATS
-from ..utils.checker import check_requirements
-from ..utils.general import clean_str
-
-"""
-NOTE:
-    `ReadVideosAndImages` and `ReadStreams` are pure data readers without preprocessing.
-"""
+from .utils import IMG_FORMATS, VID_FORMATS
 
 
 class ReadStreams:
@@ -23,9 +15,7 @@ class ReadStreams:
 
         if osp.isfile(sources):
             with open(sources, "r") as f:
-                sources = [
-                    x.strip() for x in f.read().strip().splitlines() if len(x.strip())
-                ]
+                sources = [x.strip() for x in f.read().strip().splitlines() if len(x.strip())]
         else:
             sources = [sources]
 
@@ -37,34 +27,23 @@ class ReadStreams:
             [0] * n,
             [None] * n,
         )
-        self.sources = [clean_str(x) for x in sources]  # clean source names for later
+        self.sources = sources  # clean source names for later
         for i, s in enumerate(sources):  # index, source
             # Start thread to read frames from video stream
             print(f"{i + 1}/{n}: {s}... ", end="")
-            if "youtube.com/" in s or "youtu.be/" in s:  # if source is YouTube video
-                check_requirements(("pafy", "youtube_dl"))
-                import pafy
-
-                s = pafy.new(s).getbest(preftype="mp4").url  # YouTube URL
             s = eval(s) if s.isnumeric() else s  # i.e. s = '0' local webcam
             cap = cv2.VideoCapture(s)
             assert cap.isOpened(), f"Failed to open {s}"
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.fps[i] = (
-                max(cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0
-            )  # 30 FPS fallback
+            self.fps[i] = max(cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
             self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float(
                 "inf"
             )  # infinite stream fallback
 
             _, self.imgs[i] = cap.read()  # guarantee first frame
-            self.threads[i] = Thread(
-                target=self.update, args=([i, cap, s]), daemon=True
-            )
-            print(
-                f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)"
-            )
+            self.threads[i] = Thread(target=self.update, args=([i, cap, s]), daemon=True)
+            print(f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
         print("")  # newline
 
@@ -84,9 +63,7 @@ class ReadStreams:
                 if success:
                     self.imgs[i] = im
                 else:
-                    print(
-                        "WARNING: Video stream unresponsive, please check your IP camera connection."
-                    )
+                    print("WARNING: Video stream unresponsive, please check your IP camera connection.")
                     self.imgs[i] *= 0
                     cap.open(stream)  # re-open stream if signal was lost
             time.sleep(1 / self.fps[i])  # wait time
@@ -97,9 +74,7 @@ class ReadStreams:
 
     def __next__(self):
         self.count += 1
-        if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord(
-            "q"
-        ):  # q to quit
+        if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord("q"):  # q to quit
             cv2.destroyAllWindows()
             raise StopIteration
 
@@ -126,32 +101,33 @@ class ReadStreams:
 class ReadOneStream:
     """Read one Stream, modified from yolov5, support one streams reading and saving."""
 
-    def __init__(self, source):
+    def __init__(self, source, vid_stride=1, imgsz=None, im_only=False):
+        """ReadOneStream
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            vid_stride (int | optional): Video stride.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
         self.mode = "stream"
 
         self.vid_path, self.vid_writer = None, None
         self.fps, self.frames = 0, 0
-        self.source = clean_str(source)  # clean source names for later
+        self.source = source  # clean source names for later
+        self.vid_stride = vid_stride
+        self.imgsz = imgsz
+        self.im_only = im_only
 
         # Start thread to read frames from video stream
         print(f"{1}/{1}: {source}... ", end="")
-        if (
-            "youtube.com/" in source or "youtu.be/" in source
-        ):  # if source is YouTube video
-            check_requirements(("pafy", "youtube_dl"))
-            import pafy
-
-            source = pafy.new(source).getbest(preftype="mp4").url  # YouTube URL
-        source = (
-            eval(source) if source.isnumeric() else source
-        )  # i.e. s = '0' local webcam
+        source = eval(source) if source.isnumeric() else source  # i.e. s = '0' local webcam
         self.cap = cv2.VideoCapture(source)
         assert self.cap.isOpened(), f"Failed to open {source}"
         w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.fps = (
-            max(self.cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0
-        )  # 30 FPS fallback
+        self.fps = max(self.cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
         self.frames = max(int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float(
             "inf"
         )  # infinite stream fallback
@@ -164,23 +140,34 @@ class ReadOneStream:
         return self
 
     def __next__(self):
-        self.count += 1
-        ret_val, img0 = self.cap.read()
-        if not ret_val or cv2.waitKey(1) == ord("q"):  # q to quit
+        for _ in range(self.vid_stride):
+            self.cap.grab()
+        success, img0 = self.cap.retrieve()
+        if not success or cv2.waitKey(1) == ord("q"):  # q to quit
             self.count += 1
             self.cap.release()
             cv2.destroyAllWindows()
             raise StopIteration
 
-        return img0, self.source, " "
+        if self.imgsz:
+            h, w = self.imgsz
+            img0 = cv2.resize(img0, (w, h))
+        return img0 if self.im_only else (img0, self.source, " ")
 
     def __len__(self):
         return 1
 
     def save(self, save_path, image):
+        """save video.
+
+        Args:
+            save_path (str): Save path, with suffix(`.avi`, `.mp4`) or not.
+            image (nd.ndarray): The image/frame.
+        """
+        save_path = f"{save_path}.mp4" if Path(save_path).suffix[1:] not in VID_FORMATS else save_path
         if self.vid_path != save_path:  # new video
             self.vid_path = save_path
-            fps, w, h = 30, image.shape[1], image.shape[0]
+            w, h = image.shape[1], image.shape[0]
             self.vid_writer = cv2.VideoWriter(
                 save_path, cv2.VideoWriter_fourcc(*"mp4v"), int(self.fps), (w, h)
             )
@@ -190,7 +177,16 @@ class ReadOneStream:
 class ReadVideosAndImages:
     """Read Videos and Images, modified from yolov5"""
 
-    def __init__(self, source: str):
+    def __init__(self, source: str, vid_stride=1, imgsz=None, im_only=False):
+        """ReadVideosAndImages
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            vid_stride (int | optional): Video stride.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
         p = str(Path(source).resolve())  # os-agnostic absolute path
         if "*" in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
@@ -210,7 +206,10 @@ class ReadVideosAndImages:
         self.files = images + videos
         self.nf = ni + nv  # number of files
         self.video_flag = [False] * ni + [True] * nv
+        self.vid_stride = vid_stride
         self.mode = "image"
+        self.imgsz = imgsz
+        self.im_only = im_only
         if any(videos):
             self.new_video(videos[0])  # new video
         else:
@@ -232,8 +231,11 @@ class ReadVideosAndImages:
         if self.video_flag[self.count]:
             # Read video
             self.mode = "video"
-            ret_val, img0 = self.cap.read()
-            if not ret_val:
+            for _ in range(self.vid_stride):
+                self.cap.grab()
+            success, img0 = self.cap.retrieve()
+            if self.frame >= self.frames:
+            # if not success:
                 self.count += 1
                 self.cap.release()
                 if self.count == self.nf:  # last video
@@ -241,10 +243,10 @@ class ReadVideosAndImages:
                 else:
                     path = self.files[self.count]
                     self.new_video(path)
-                    ret_val, img0 = self.cap.read()
+                    success, img0 = self.cap.read()
 
-            self.frame += 1
-            s = f"video {self.count + 1}/{self.nf} "
+            self.frame += self.vid_stride
+            s = f"video {self.count + 1}/{self.nf} {self.frame}/{self.frames}"
         else:
             # Read image
             self.count += 1
@@ -252,27 +254,40 @@ class ReadVideosAndImages:
             assert img0 is not None, "Image Not Found " + path
             s = f"image {self.count}/{self.nf} "
 
-        return img0, path, s
+        if self.imgsz:
+            h, w = self.imgsz
+            img0 = cv2.resize(img0, (w, h))
+        return img0 if self.im_only else (img0, path, s)
 
     def new_video(self, path):
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
         self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        try:
+            self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        except:
+            print("Warning: get inf fps, hand-coded it to 25.")
+            self.fps = 25
 
     def save(self, save_path, image):
+        """save image or video.
+
+        Args:
+            save_path (str): Save path, with suffix(`.jpg`, `.mp4`) or not.
+            image (nd.ndarray): The image/frame.
+        """
         if self.mode == "image":
+            save_path = f"{save_path}.jpg" if Path(save_path).suffix[1:] not in IMG_FORMATS else save_path
             cv2.imwrite(save_path, image)
         else:  # 'video' or 'stream'
+            save_path = f"{save_path}.mp4" if Path(save_path).suffix[1:] not in VID_FORMATS else save_path
             if self.vid_path != save_path:  # new video
                 self.vid_path = save_path
                 if isinstance(self.vid_writer, cv2.VideoWriter):
                     self.vid_writer.release()  # release previous video writer
-                fps = self.cap.get(cv2.CAP_PROP_FPS)
                 w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                self.vid_writer = cv2.VideoWriter(
-                    save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
-                )
+                self.vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
             self.vid_writer.write(image)
 
     def __len__(self):
@@ -291,12 +306,3 @@ def create_reader(source: str):
     is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
     webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
     return ReadOneStream(source) if webcam else ReadVideosAndImages(source), webcam
-
-
-if __name__ == "__main__":
-    test = create_reader(source="/d/九江/playphone/20211223/imgs")
-    for img, p, s in test:
-        print(s, p)
-        cv2.imshow("p", img)
-        if cv2.waitKey(1) == ord("q"):
-            break

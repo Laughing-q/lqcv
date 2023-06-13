@@ -1,58 +1,31 @@
-from lqcv.bbox.areas import Area, Areas
-from lqcv.data import create_reader
-from yolov5.core import Yolov5
-from tqdm import tqdm
+from lqcv.bbox import Area, Areas
+from ultralytics import YOLO
 import cv2
 
 
-def test_one_rect(rect, detector, dataset):
-    area = Area(rect, area_type="rect")
-    for img, _, _ in tqdm(dataset, total=dataset.frames):
-        outputs = detector.inference(img, classes=[0])
-        boxes = outputs[0][:, :4].cpu()
-        index = area.boxes_in_area(boxes, frame=img, filter="center")
-        img = detector.visualize(img, outputs[0][index])
-        area.plot(img)
-        cv2.imshow("p", cv2.resize(img, (1280, 720)))
+def test_one(results, area, atype="rect", numpy=False):
+    area = Area(area, atype=atype)
+    for result in results:
+        boxes = result.boxes.xyxy
+        boxes = boxes.cpu().numpy() if numpy else boxes
+        img = result.orig_img
+        index = area.filter_boxes(boxes, frame=img, filter="center")
+        plot_img = result[index].plot()
+        area.plot(plot_img)
+        cv2.imshow("p", cv2.resize(plot_img, (1280, 720)))
         if cv2.waitKey(1) == ord("q"):
             break
 
 
-def test_multi_rects(rects, detector, dataset):
-    areas = Areas(rects, area_type="rect")
-    for img, _, _ in tqdm(dataset, total=dataset.frames):
-        outputs = detector.inference(img, classes=[0])
-        boxes = outputs[0][:, :4].cpu()
-        index = areas.boxes_in_areas(boxes, frame=img, filter="center")
+def test_multi(results, areas, atype="rect", numpy=False):
+    areas = Areas(areas, atype=atype)
+    for result in results:
+        boxes = result.boxes.xyxy
+        boxes = boxes.cpu().numpy() if numpy else boxes
+        img = result.orig_img
+        index = areas.filter_boxes(boxes, frame=img, filter="center")
         for i in index:
-            img = detector.visualize(img, outputs[0][i])
-        areas.plot(img)
-        cv2.imshow("p", cv2.resize(img, (1280, 720)))
-        if cv2.waitKey(1) == ord("q"):
-            break
-
-
-def test_one_polygon(polygon, detector, dataset):
-    area = Area(polygon, area_type="polygon")
-    for img, _, _ in tqdm(dataset, total=dataset.frames):
-        outputs = detector.inference(img, classes=[0])
-        boxes = outputs[0][:, :4].cpu()
-        index = area.boxes_in_area(boxes, frame=img, filter="lb")
-        img = detector.visualize(img, outputs[0][index])
-        area.plot(img)
-        cv2.imshow("p", cv2.resize(img, (1280, 720)))
-        if cv2.waitKey(1) == ord("q"):
-            break
-
-
-def test_multi_polygons(polygons, detector, dataset):
-    areas = Areas(polygons, area_type="polygon")
-    for img, _, _ in tqdm(dataset, total=dataset.frames):
-        outputs = detector.inference(img, classes=[0])
-        boxes = outputs[0][:, :4].cpu()
-        index = areas.boxes_in_areas(boxes, frame=img, filter="center")
-        for i in index:
-            img = detector.visualize(img, outputs[0][i])
+            img = result[i].plot(img=img)
         areas.plot(img)
         cv2.imshow("p", cv2.resize(img, (1280, 720)))
         if cv2.waitKey(1) == ord("q"):
@@ -60,6 +33,7 @@ def test_multi_polygons(polygons, detector, dataset):
 
 
 if __name__ == "__main__":
+    # NOTE: example rect and polygon for 1920x1080 video.
     rect = [545, 248, 1414, 616]
     polygon = [559, 245, 1035, 242, 1136, 668, 253, 720]
 
@@ -70,11 +44,14 @@ if __name__ == "__main__":
         [115, 714, 512, 720, 821, 883, 502, 1021, 131, 974],
     ]
 
-    detector = Yolov5(weights="./weights/yolov5m.pt", device=0)
-    dataset, _ = create_reader(source="./test_videos/test.mp4")
+    model = YOLO("/home/laughing/codes/ultralytics/weights/yolov8n.pt")
+    results = model.predict("/home/laughing/Videos/test_person.mp4", stream=True, classes=0)
+    # test_one(results, rect, atype="rect")
+    # test_one(results, polygon, atype="polygon")
+    # test_multi(results, rects, atype="rect")
+    # test_multi(results, polygons, atype="polygon")
 
-    # test_one_rect(rect, detector, dataset)
-    # test_one_polygon(polygon, detector, dataset)
-
-    # test_multi_rects(rects, detector, dataset)
-    test_multi_polygons(polygons, detector, dataset)
+    test_one(results, rect, atype="rect", numpy=True)
+    test_one(results, polygon, atype="polygon", numpy=True)
+    test_multi(results, rects, atype="rect", numpy=True)
+    test_multi(results, polygons, atype="polygon", numpy=True)
