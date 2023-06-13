@@ -114,7 +114,7 @@ class BaseConverter(metaclass=ABCMeta):
             im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
         """
         if self.format == "xml" and classes is None:
-            LOGGER.info("Current format is COCO! there's no need to convert it since `classes` is also `None`.")
+            LOGGER.info("Current format is XML! there's no need to convert it since `classes` is also `None`.")
             return
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
