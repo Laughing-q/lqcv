@@ -7,7 +7,7 @@ from threading import Thread
 from .utils import IMG_FORMATS, VID_FORMATS
 
 
-class ReadStreams:
+class Streams:
     """Read Streams, modified from yolov5, support multi streams reading, but support one streams saving for now."""
 
     def __init__(self, sources="streams.txt"):
@@ -98,7 +98,7 @@ class ReadStreams:
         self.vid_writer[i].write(image)
 
 
-class ReadOneStream:
+class Stream:
     """Read one Stream, modified from yolov5, support one streams reading and saving."""
 
     def __init__(self, source, vid_stride=1, imgsz=None, im_only=False):
@@ -294,15 +294,79 @@ class ReadVideosAndImages:
         return self.nf  # number of files
 
 
-def create_reader(source: str):
-    """This is for data(video, webcam, image, image_path) reading in inference.
-    Args:
-        source(str): data source, could be a video,image,dir or webcam.
-    Return:
-        reader(ReadVideosAndImages | ReadStreams): data reader.
-        webcam(bool): the source is webcam or not.
-    """
-    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
-    is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
-    webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
-    return ReadOneStream(source) if webcam else ReadVideosAndImages(source), webcam
+class Images(ReadVideosAndImages):
+    """Read Images."""
+    def __init__(self, source: str, imgsz=None, im_only=False):
+        """Images
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
+        p = str(Path(source).resolve())  # os-agnostic absolute path
+        if "*" in p:
+            files = sorted(glob.glob(p, recursive=True))  # glob
+        elif osp.isdir(p):
+            files = sorted(glob.glob(osp.join(p, "*.*")))  # dir
+        elif osp.isfile(p):
+            files = [p]  # files
+        else:
+            raise Exception(f"ERROR: {p} does not exist")
+
+        # random.shuffle(files)
+        images = [x for x in files if x.split(".")[-1].lower() in IMG_FORMATS]
+        ni = len(images)
+
+        self.files = images
+        self.nf = ni  # number of files
+        self.video_flag = [False] * ni
+        self.mode = "image"
+        self.imgsz = imgsz
+        self.im_only = im_only
+        assert self.nf > 0, (
+            f"No images or videos found in {p}. "
+            f"Supported formats are:\nimages: {IMG_FORMATS}"
+        )
+
+
+class Videos(ReadVideosAndImages):
+    """Read Images."""
+    def __init__(self, source: str, vid_stride=1, imgsz=None, im_only=False):
+        """Images
+
+        Args:
+            source (str): Source, could be a folder or a direct file.
+            vid_stride (int | optional): Video stride.
+            imgsz (tuple | optional): Image size, (height, width)
+            im_only (bool | optional): Whether to return image only, or it'll return
+                image, path and description.
+        """
+        p = str(Path(source).resolve())  # os-agnostic absolute path
+        if "*" in p:
+            files = sorted(glob.glob(p, recursive=True))  # glob
+        elif osp.isdir(p):
+            files = sorted(glob.glob(osp.join(p, "*.*")))  # dir
+        elif osp.isfile(p):
+            files = [p]  # files
+        else:
+            raise Exception(f"ERROR: {p} does not exist")
+
+        # random.shuffle(files)
+        videos = [x for x in files if x.split(".")[-1].lower() in VID_FORMATS]
+        nv = len(videos)
+
+        self.vid_path, self.vid_writer = None, None
+        self.files = videos
+        self.nf = nv  # number of files
+        self.video_flag = [True] * nv
+        self.vid_stride = vid_stride
+        self.mode = "video"
+        self.imgsz = imgsz
+        self.im_only = im_only
+        self.new_video(videos[0])  # new video
+        assert self.nf > 0, (
+            f"No images or videos found in {p}. "
+            f"Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}"
+        )
