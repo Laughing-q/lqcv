@@ -1,6 +1,8 @@
 import shutil
 import os
 import tqdm
+import random
+import glob
 
 
 def find_extra_names(more_dir, less_dir, reverse=False, pure=False):
@@ -46,6 +48,31 @@ def remove_extra_files(more_dir, less_dir, target_dir=None, reverse=False):
     for name in names:
         file = os.path.join(more_dir, name)
         shutil.move(file, target_dir) if target_dir else os.remove(file)
+
+
+def split_data(data_dir, ratio=0.8):
+    """Split the data to train/val set.
+
+    Args:
+        data_dir (str): Data directory.
+        ratio (float): The split ratio for train set, (1 - ratio) for val set.
+    """
+    files = glob.glob(os.path.join(data_dir, "*"))
+    assert len(files), f"There's no files in {data_dir}"
+    random.shuffle(files)
+    num_train = int(len(files) * ratio)
+
+    train_dir = os.path.join(data_dir, "train")
+    val_dir = os.path.join(data_dir, "val")
+    for d in (train_dir, val_dir):
+        os.makedirs(d)
+
+    for i, file in tqdm.tqdm(enumerate(files), total=len(files)):
+        if i < num_train:
+            shutil.move(file, train_dir)
+        else:
+            shutil.move(file, val_dir)
+
 
 if __name__ == "__main__":
     # names = find_extra_names(
