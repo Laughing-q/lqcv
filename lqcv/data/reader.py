@@ -269,12 +269,14 @@ class ReadVideosAndImages:
             print("Warning: get inf fps, hand-coded it to 25.")
             self.fps = 25
 
-    def save(self, save_path, image):
+    def save(self, save_path, image, width=None, height=None):
         """save image or video.
 
         Args:
             save_path (str): Save path, with suffix(`.jpg`, `.mp4`) or not.
             image (nd.ndarray): The image/frame.
+            width (int | None): Custom width.
+            height (int | None): Custom height.
         """
         if self.mode == "image":
             save_path = f"{save_path}.jpg" if Path(save_path).suffix[1:] not in IMG_FORMATS else save_path
@@ -285,8 +287,8 @@ class ReadVideosAndImages:
                 self.vid_path = save_path
                 if isinstance(self.vid_writer, cv2.VideoWriter):
                     self.vid_writer.release()  # release previous video writer
-                w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                w = width or int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = height or int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 self.vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
             self.vid_writer.write(image)
 
