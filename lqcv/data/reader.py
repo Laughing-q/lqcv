@@ -334,7 +334,7 @@ class Images(ReadVideosAndImages):
 
 
 class Videos(ReadVideosAndImages):
-    """Read Images."""
+    """Read Videos."""
     def __init__(self, source: str, vid_stride=1, imgsz=None, im_only=False):
         """Images
 
