@@ -21,6 +21,8 @@ class BaseModel:
         self.onnx = model_file.endswith(".onnx")
         self.model = self.load_model(model_file)
         self.torch = isinstance(self.model, nn.Module)
+        if self.onnx:
+            assert self.half == False, "ONNX model is not compatible with half mode!"
         # NOTE: for torch model
         if self.torch:
             self.model.cuda()
@@ -31,6 +33,7 @@ class BaseModel:
         # create model and load weights
         if self.engine:
             model = TRTModel(model_file)
+            self.half = model.half
         elif self.onnx:
             model = ONNXModel(model_file)
         else:
@@ -59,8 +62,7 @@ class BaseModel:
             # NOTE: `self.mean` and `self.std` should be numpy type
             assert isinstance(self.mean, np.ndarray) and isinstance(self.std, np.ndarray)
             im = (im - self.mean) / self.std  # do normalization in RGB order
-        if self.torch:
-            im = im.half() if self.half else im.float()
+        im = im.half() if self.half else im
         return im
 
     def _single_preprocess(self, im):
