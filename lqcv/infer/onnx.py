@@ -14,15 +14,15 @@ class ONNXModel:
         """
         self.model_file = model_file
         self.session = onnxruntime.InferenceSession(self.model_file, providers=providers)
-        input_cfg = self.session.get_inputs()[0]
-        input_shape = input_cfg.shape
-        input_name = input_cfg.name
-        self.input_shape = input_shape
+        inputs = self.session.get_inputs()
+        input_names = []
+        for input in inputs:
+            input_names.append(input.name)
         outputs = self.session.get_outputs()
         output_names = []
         for out in outputs:
             output_names.append(out.name)
-        self.input_name = input_name
+        self.input_names = input_names
         self.output_names = output_names
 
     def __call__(self, input_dict):
