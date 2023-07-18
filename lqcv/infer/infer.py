@@ -47,7 +47,7 @@ class BaseModel:
             im (np.ndarray | List[ndarray] | torch.Tensor): Input image.
 
         Returns:
-            
+
         """
         # NOTE: assuming img is in CUDA with (b, 3, h, w) and divided by 255 in advance if it's a tensor
         if isinstance(im, np.ndarray):
@@ -70,7 +70,7 @@ class BaseModel:
             im (np.ndarray): Input image.
 
         Returns:
-            
+
         """
         assert isinstance(im, np.ndarray)
         im = self.pre_transform(im)
@@ -101,22 +101,28 @@ class BaseModel:
             im (np.ndarray | List[ndarray] | torch.Tensor): Input image.
 
         Returns:
-            
+
         """
         im = self.preprocess(im)
         # NOTE: assuming engine/onnx inference only supports batch=1
         if self.engine:
-            outputs = [self.model(self.get_input_dict(i[None])).clone() for i in im]
-            outputs = [torch.cat(output, dim=0) if len(output) > 1 else output[0] for output in zip(*outputs)]
+            outputs = [self.model(self.get_input_dict(i[None])) for i in im]
+            outputs = [
+                (torch.cat(output, dim=0) if len(output) > 1 else output[0]).clone()
+                for output in zip(*outputs)
+            ]
             # NOTE: engine postprocess could be different from torch model,
             # depends the way of how model exported.
-            outputs = self.engine_postprocess(outputs)  
+            outputs = self.engine_postprocess(outputs)
         elif self.onnx:
             outputs = [self.model(self.get_input_dict(i[None])) for i in im]
-            outputs = [np.concatenate(output, axis=0) if len(output) > 1 else output[0] for output in zip(*outputs)]
+            outputs = [
+                np.concatenate(output, axis=0) if len(output) > 1 else output[0]
+                for output in zip(*outputs)
+            ]
             # NOTE: onnx postprocess could be different from torch model,
             # depends the way of how model exported.
-            outputs = self.onnx_postprocess(outputs)  
+            outputs = self.onnx_postprocess(outputs)
         else:
             outputs = self.postprocess(self.model(im))
         return outputs
@@ -135,4 +141,3 @@ class BaseModel:
     def onnx_postprocess(self, outputs):
         """Postprocess for onnx model."""
         return self.postprocess(outputs)
-
