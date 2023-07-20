@@ -2,7 +2,7 @@ import cv2
 import os
 from pathlib import Path
 from tqdm import tqdm
-from lqcv.data import ReadVideosAndImages
+from lqcv.data import Videos
 
 
 def videos2images(video_dir, save_dir, interval=1, count_only=False, tail=""):
@@ -15,7 +15,7 @@ def videos2images(video_dir, save_dir, interval=1, count_only=False, tail=""):
         count_only (bool): Only count how many images will be saved, intead of actually saving them.
         tail (str): Special tail for image name.
     """
-    reader = ReadVideosAndImages(video_dir)
+    reader = Videos(video_dir)
     total = 0
     if count_only:
         for f in tqdm(reader.files, total=len(reader.files)):

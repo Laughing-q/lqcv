@@ -240,10 +240,9 @@ class ReadVideosAndImages:
                 self.cap.release()
                 if self.count == self.nf:  # last video
                     raise StopIteration
-                else:
-                    path = self.files[self.count]
-                    self.new_video(path)
-                    success, img0 = self.cap.read()
+                path = self.files[self.count]
+                self.new_video(path)
+                success, img0 = self.cap.read()
 
             self.frame += self.vid_stride
             s = f"video {self.count + 1}/{self.nf} {self.frame}/{self.frames}"
