@@ -371,3 +371,18 @@ class Videos(ReadVideosAndImages):
             f"No images or videos found in {p}. "
             f"Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}"
         )
+
+# NOTE: keep this function to backward compatibility
+def create_reader(source: str):
+    """This is for data(video, webcam, image, image_path) reading in inference.
+    Args:
+        source(str): data source, could be a video,image,dir or webcam.
+    Return:
+        reader(ReadVideosAndImages | ReadStreams): data reader.
+        webcam(bool): the source is webcam or not.
+    """
+    is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
+    is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
+    webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
+    return Stream(source) if webcam else ReadVideosAndImages(source), webcam
+
