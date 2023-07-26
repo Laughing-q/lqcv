@@ -215,6 +215,8 @@ class BaseConverter(metaclass=ABCMeta):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
             return
 
+        import random
+        random.shuffle(self.labels)
         pbar = tqdm(self.labels, total=len(self.labels))
         if save_dir is None:
             cv2.namedWindow("p", cv2.WINDOW_NORMAL)
