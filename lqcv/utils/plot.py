@@ -57,12 +57,12 @@ def plot_one_box(x, img, color=(0, 0, 255), label=None, line_thickness=None):
     if label:
         tf = max(tl - 1, 1)  # font thickness
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        c2 = c1[0] + t_size[0], c1[1] + t_size[1] + 3
         cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
         cv2.putText(
             img,
             label,
-            (c1[0], c1[1] - 2),
+            (c1[0], c1[1] + t_size[1]),
             0,
             tl / 3,
             [225, 255, 255],
