@@ -67,6 +67,7 @@ class YOLOConverter(BaseConverter):
                             catImg[name].append(img_name)
                 # TODO: self.errors
                 if msg:
+                    LOGGER.warning(msg)
                     msgs.append(msg)
                 pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
         # update catImgCnt
@@ -93,12 +94,17 @@ class YOLOConverter(BaseConverter):
                 with open(lb_file, "r") as f:
                     l = [x.split() for x in f.read().strip().splitlines() if len(x)]
                     l = np.array(l, dtype=np.float32)
+                nl = len(l)
                 if len(l):
                     assert l.shape[1] == 5, f"labels require 5 columns each: {lb_file}"
                     assert (l >= 0).all(), f"negative labels: {lb_file}"
                     assert (
                         l[:, 1:] <= 1
                     ).all(), f"non-normalized or out of bounds coordinate labels: {lb_file}"
+                    _, i = np.unique(l, axis=0, return_index=True)
+                    if len(i) < nl:  # duplicate row check
+                        l = l[i]  # remove duplicates
+                        msg = f'WARNING ⚠️ {im_file}: {nl - len(i)} duplicate labels removed'
                     assert np.unique(l, axis=0).shape[0] == l.shape[0], "duplicate labels"
                     assert (
                         l[:, 0] < len(class_names)

@@ -41,13 +41,15 @@ class XMLConverter(YOLOConverter):
         img_name, img_dir, labels_dir, class_names = args
         xml_file = osp.join(labels_dir, str(Path(img_name).with_suffix(".xml")))
         nm, nf, ne, nc = 0, 0, 0, 0  # number missing, found, empty, corrupt
+        filename, shape = None, None
         try:
             # verify labels
             if os.path.isfile(xml_file):
                 nf += 1  # label found
                 xml = ET.parse(xml_file).getroot()
                 objects = xml.findall("object")
-                if len(objects):
+                nl = len(objects)
+                if nl:
                     filename = xml.find("filename")
                     assert (filename is not None), f"can't get `filename` info from {xml_file}"
                     # filename = str(filename.text)
@@ -82,7 +84,11 @@ class XMLConverter(YOLOConverter):
                     assert (bbox >= 0).all(), f"negative labels: {xml_file}"
                     assert (bbox[:, 0::2] <= w).all() and (bbox[:, 1::2] <= h).all(), \
                             f"non-normalized or out of bounds coordinate labels: {xml_file}"
-                    assert np.unique(bbox, axis=0).shape[0] == bbox.shape[0], "duplicate labels"
+                    _, idx = np.unique(bbox, axis=0, return_index=True)
+                    if len(idx) < nl:  # duplicate row check
+                        bbox = bbox[idx]  # remove duplicates
+                        cls = [cls[ii] for ii in idx]
+                        msg = f'WARNING ⚠️ {xml_file}: {nl - len(idx)} duplicate labels removed'
                 else:
                     ne += 1
                     cls, bbox = [], np.zeros((0, 4), dtype=np.float32)
@@ -92,5 +98,5 @@ class XMLConverter(YOLOConverter):
             return filename, cls, Boxes(bbox, format="xyxy"), shape, nm, nf, ne, nc, ""
         except Exception as e:
             nc += 1
-            msg = f"WARNING: Ignoring corrupted xmls: {e}"
+            msg = f"WARNING: Ignoring corrupted xml {xml_file}: {e}"
             return [None, None, None, None, nm, nf, ne, nc, msg]
