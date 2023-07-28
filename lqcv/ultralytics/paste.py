@@ -1,6 +1,5 @@
-from PIL import Image
+from PIL import Image, ImageFile
 import numpy as np
-from PIL import ImageFile
 
 # TODO: update this code
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -75,6 +74,13 @@ def paste1(foreground, background, bg_size, fg_scale=1.5):
 
 
 if __name__ == "__main__":
-    _, coord1, test1, _ = paste1("2007_000032.jpg", "dark.jpg", bg_size=640, fg_scale=2)
+    import cv2
+    output, coord1, _, _ = paste1(
+        "/home/laughing/codes/lqcv/lqcv/assets/bus.jpg",
+        "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
+        bg_size=640,
+        fg_scale=2,
+    )
     print(coord1)
-    test1.show()
+    cv2.imshow("P", output)
+    cv2.waitKey(0)

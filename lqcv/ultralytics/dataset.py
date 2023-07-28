@@ -2,9 +2,8 @@ from ultralytics.data.dataset import YOLODataset
 from ultralytics.data.augment import Compose
 from ultralytics.utils.instance import Instances
 from ultralytics.utils import LOGGER, colorstr
-from copy import deepcopy
 from .augment import NBMosaic
-from .paste import paste1
+from .paste_cv import paste1
 import numpy as np
 import math
 import cv2
@@ -56,25 +55,20 @@ class NBYOLODataset(YOLODataset):
         label['cls'] = np.zeros((0, 1), dtype=np.float32)
         return self.update_labels_info(label, neg=True)
 
-    def get_bg_image_and_label(self, index):
+    def get_image_and_label(self, index):
         """Get background image and paste normal image on background image."""
-        im_file = self.im_files[index]
-        bg_file = self.bg_files[np.random.randint(0, len(self.bg_files))]
-        im, (x1, y1), _, (fw, fh) = paste1(
-            im_file, bg_file, bg_size=self.img_size, fg_scale=np.random.uniform(1.5, 5)
-        )
-        label = deepcopy(self.labels[index])  # requires deepcopy() https://github.com/ultralytics/ultralytics/pull/1948
-        label.pop('shape', None)  # shape is for rect, remove it
-        label['img'], label['ori_shape'], label['resized_shape'] = im, im.shape[:2], im.shape[:2]
-        label['ratio_pad'] = (label['resized_shape'][0] / label['ori_shape'][0],
-                              label['resized_shape'][1] / label['ori_shape'][1])  # for evaluation
-        if self.rect:
-            label['rect_shape'] = self.batch_shapes[self.batch[index]]
-        label =  self.update_labels_info(label)
-        label['instances'].convert_bbox(format='xyxy')
-        label['instances'].denormalize(fw, fh)
-        label['instances'].add_padding(x1, y1)
-        label['instances'].normalize(*im.shape[:2][::-1])
+        label = super().get_image_and_label(index)
+        if len(self.bg_files) and (np.random.uniform(0, 1) > 0.5):
+            bg_im = cv2.imread(self.bg_files[np.random.randint(0, len(self.bg_files))])
+            im, (x1, y1), (fw, fh) = paste1(label["img"], bg_im, bg_size=self.img_size, fg_scale=np.random.uniform(1.5, 5))
+            h, w = im.shape[:2]
+            # update img and shapes
+            label["img"], label['ori_shape'], label['resized_shape'] = im, (h, w), (h, w)
+            label['ratio_pad'] = (1, 1)  # for evaluation
+            label['instances'].convert_bbox(format='xyxy')
+            label['instances'].denormalize(fw, fh)
+            label['instances'].add_padding(x1, y1)
+            label['instances'].normalize(*im.shape[:2][::-1])
         return label
 
     def update_labels_info(self, label, neg=False):
