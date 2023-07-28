@@ -60,7 +60,7 @@ class NBYOLODataset(YOLODataset):
         label = super().get_image_and_label(index)
         if len(self.bg_files) and (np.random.uniform(0, 1) > 0.5):
             bg_im = cv2.imread(self.bg_files[np.random.randint(0, len(self.bg_files))])
-            im, (x1, y1), (fw, fh) = paste1(label["img"], bg_im, bg_size=self.img_size, fg_scale=np.random.uniform(1.5, 5))
+            im, (x1, y1), (fw, fh) = paste1(label["img"], bg_im, bg_size=self.imgsz, fg_scale=np.random.uniform(1.5, 5))
             h, w = im.shape[:2]
             # update img and shapes
             label["img"], label['ori_shape'], label['resized_shape'] = im, (h, w), (h, w)
