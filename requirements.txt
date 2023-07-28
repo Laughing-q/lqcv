@@ -5,3 +5,4 @@ tqdm
 
 # tensorrt
 # onnxruntime
+# ultralytics
