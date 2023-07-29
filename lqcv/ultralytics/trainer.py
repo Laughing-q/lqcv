@@ -1,20 +1,30 @@
 from ultralytics.models.yolo import detect
+from ultralytics.utils import RANK, yaml_save
 from ultralytics.utils import colorstr
-from .dataset import NBYOLODataset
+from .dataset import LQDataset
 
 
-class NBTrainer(detect.DetectionTrainer):
+class LQTrainer(detect.DetectionTrainer):
+    def __init__(self, overrides=None, _callbacks=None, extra_args={}):
+        super().__init__(overrides=overrides, _callbacks=_callbacks)
+        # pass all extra_args to self.args
+        for k, v in extra_args.items():
+            self.args.__setattr__(k, v)
+        # save the args again with extra_args
+        if RANK in (-1, 0):
+            yaml_save(self.save_dir / 'args.yaml', vars(self.args))  # save run args
+
     def build_dataset(self, img_path, mode='train', batch=None):
         from ultralytics.utils.torch_utils import de_parallel
         gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
         cfg = self.args
-        return NBYOLODataset(
+        return LQDataset(
             img_path=img_path,
             imgsz=cfg.imgsz,
             batch_size=batch,
-            augment=mode == "train",  # augmentation
-            hyp=cfg,  # TODO: probably add a get_hyps_from_cfg function
-            rect=cfg.rect or mode == "val",  # rectangular batches
+            augment=mode == "train",
+            hyp=cfg,
+            rect=cfg.rect or mode == "val",
             cache=cfg.cache or None,
             single_cls=cfg.single_cls or False,
             stride=int(gs),

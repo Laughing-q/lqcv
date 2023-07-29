@@ -1,21 +1,20 @@
 from ultralytics.data.dataset import YOLODataset
-from ultralytics.data.augment import Compose
+from ultralytics.data.augment import Compose, LetterBox
 from ultralytics.utils.instance import Instances
 from ultralytics.utils import LOGGER, colorstr
-from .augment import NBMosaic
+from .augment import NBMosaic, ARandomPerspective
 from .paste_cv import paste1
 import numpy as np
 import math
 import cv2
 import os
 
-class NBYOLODataset(YOLODataset):
+class LQDataset(YOLODataset):
     def __init__(self, *args, data=None, use_segments=False, use_keypoints=False, **kwargs):
         super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
-        self.neg_files, self.bg_files = self.get_neg_and_bg(os.getenv("NEG_DIR", ""), 
-                                                            os.getenv("BG_DIR", ""))
+        self.neg_files, self.bg_files = self._get_neg_and_bg(kwargs["hyp"].neg_dir, kwargs["hyp"].bg_dir)
 
-    def get_neg_and_bg(self, neg_dir, bg_dir):
+    def _get_neg_and_bg(self, neg_dir, bg_dir):
         """Get negative pictures and background pictures."""
         img_neg_files, img_bg_files = [], []
         if os.path.isdir(neg_dir):
@@ -90,4 +89,14 @@ class NBYOLODataset(YOLODataset):
         ori_trans = super().build_transforms(hyp)
         if isinstance(ori_trans.transforms[0], Compose):
             ori_trans.transforms[0].transforms[0] = NBMosaic(self, imgsz=self.imgsz, p=hyp.mosaic)
+            ori_trans.transforms[0].transforms[2] = ARandomPerspective(
+                degrees=hyp.degrees,
+                translate=hyp.translate,
+                scale=hyp.scale,
+                shear=hyp.shear,
+                perspective=hyp.perspective,
+                pre_transform=LetterBox(new_shape=(self.imgsz, self.imgsz)),
+                area_thr=hyp.area_thr
+            )
+
         return ori_trans
