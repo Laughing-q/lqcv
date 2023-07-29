@@ -47,11 +47,11 @@ class LQDataset(YOLODataset):
 
     def get_neg_image(self, index):
         """Get negative image."""
-        label = {}
-        label['img'], label['ori_shape'], label['resized_shape'] = self.load_other_image(self.neg_files[index])
+        neg_file = self.neg_files[index]
+        label = dict(im_file=neg_file, cls=np.zeros((0, 1), dtype=np.float32))
+        label['img'], label['ori_shape'], label['resized_shape'] = self.load_other_image(neg_file)
         label['ratio_pad'] = (label['resized_shape'][0] / label['ori_shape'][0],
                               label['resized_shape'][1] / label['ori_shape'][1])  # for evaluation
-        label['cls'] = np.zeros((0, 1), dtype=np.float32)
         return self.update_labels_info(label, neg=True)
 
     def get_image_and_label(self, index):

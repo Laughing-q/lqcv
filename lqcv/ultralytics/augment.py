@@ -12,6 +12,10 @@ class NBMosaic(Mosaic):
     def __call__(self, labels):
         """Applies pre-processing transforms and mixup/mosaic transforms to labels data."""
         if random.uniform(0, 1) > self.p:
+            ln = len(self.dataset.neg_files)
+            # NOTE: there's 0.2 rate to load negative image when mosaic is not used
+            if ln and random.uniform(0, 1) > 0.8:
+                return self.dataset.get_neg_image(random.choice(range(ln)))
             return labels
 
         # Get index of one or three other images
