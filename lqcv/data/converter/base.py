@@ -153,13 +153,15 @@ class BaseConverter(metaclass=ABCMeta):
     def toYOLO(self, 
                save_dir, 
                classes=None, 
-               im_dir=None):
+               im_dir=None,
+               single_cls=False):
         """Convert labels to yolo format.
 
         Args:
             save_dir (str): Save dir for the dst txt files.
-            classes (Optiona | List[str]): Filter the class if given.
+            classes (Optional | List[str]): Filter the class if given.
             im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
+            single_cls (Optional | bool): Whether to treat all the classes to one class, default: False.
         """
         if self.format == "yolo" and classes is None:
             LOGGER.info("Current format is YOLO! there's no need to convert it since `classes` is also `None`.")
@@ -167,6 +169,8 @@ class BaseConverter(metaclass=ABCMeta):
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+        if copy_im:
+            os.makedirs(im_dir, exist_ok=True)
 
         pbar = tqdm(self.labels, total=len(self.labels))
         pbar.desc = f"Convert {self.format.upper()} to YOLO: "
@@ -188,7 +192,7 @@ class BaseConverter(metaclass=ABCMeta):
                     continue
 
                 cx, cy, bw, bh = bboxes[i].data.squeeze().tolist()
-                category_id = class_name.index(name)
+                category_id = 0 if single_cls else class_name.index(name)
                 cx /= w
                 cy /= h
                 bw /= w
@@ -210,23 +214,42 @@ class BaseConverter(metaclass=ABCMeta):
     def read_labels(self, label_dir):
         pass
 
-    def visualize(self, save_dir=None):
+    def visualize(self, save_dir=None, classes=[]):
+        """Visualize labels.
+
+        Args:
+            save_dir (str | optional): The path to save visualized images, 
+                if it's None then just show the images.
+            classes (List[int | str] | optional): To specify the classes to visualize, it's a list contains
+                the cls index or class name.
+        """
         if not osp.exists(self.img_dir):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
             return
 
         import random
         random.shuffle(self.labels)
+        classes = [self.class_names.index(c) if isinstance(c, str) else c for c in classes]
+        filter = len(classes)
+
         pbar = tqdm(self.labels, total=len(self.labels))
-        if save_dir is None:
+        if save_dir is not None:
+            os.makedirs(save_dir, exist_ok=True)
+        else:
             cv2.namedWindow("p", cv2.WINDOW_NORMAL)
         for label in pbar:
+            plotted = False
             try:
                 filename = label["img_name"]
                 image = cv2.imread(osp.join(self.img_dir, filename))
                 if image is None:
                     continue
-                cls, bbox = label["cls"], label["bbox"]
+                cls = label["cls"]
+                bbox = label["bbox"]
+                if filter:
+                    idx = [i for i in range(len(cls)) if cls[i] in classes]
+                    cls = [cls[i] for i in idx]
+                    bbox = bbox[idx]
                 bbox.convert("xyxy")
                 for i, c in enumerate(cls):
                     plot_one_box(
@@ -236,10 +259,13 @@ class BaseConverter(metaclass=ABCMeta):
                         line_thickness=2,
                         label=self.class_names[int(c)],
                     )
+                    plotted = True
             except Exception as e:
                 LOGGER.warning(e)
                 continue
-            if save_dir is not None:
+            if not plotted:
+                continue
+            if save_dir:
                 cv2.imwrite(osp.join(save_dir, filename), image)
             else:
                 cv2.imshow("p", image)
