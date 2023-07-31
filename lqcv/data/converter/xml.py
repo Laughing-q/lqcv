@@ -52,8 +52,8 @@ class XMLConverter(YOLOConverter):
                 if nl:
                     filename = xml.find("filename")
                     assert (filename is not None), f"can't get `filename` info from {xml_file}"
-                    # filename = str(filename.text)
-                    filename = Path(xml_file).name
+                    filename = str(filename.text)
+                    # filename = Path(xml_file).name
                     try:
                         size = xml.find("size")
                         width = size.find("width")
