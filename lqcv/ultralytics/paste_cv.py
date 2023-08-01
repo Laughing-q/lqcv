@@ -35,7 +35,7 @@ def get_wh(a, b):
     return np.random.randint(a, b)
 
 
-def paste1(foreground, background, bg_size, fg_scale=1.5):
+def paste1(foreground, background, bg_size=None, fg_scale=1.5):
     if isinstance(foreground, str):
         foreground = cv2.imread(foreground)
     if isinstance(background, str):
@@ -52,12 +52,43 @@ def paste1(foreground, background, bg_size, fg_scale=1.5):
     return background, (x1, y1), (fw, fh)
 
 
+def paste1_mask(foreground, background, bg_size=None, fg_scale=1.5):
+    if isinstance(foreground, str):
+        foreground = cv2.imread(foreground)
+    if isinstance(background, str):
+        background = cv2.imread(background)
+    if bg_size is not None:
+        background = imresize(background, bg_size)
+    bh, bw = background.shape[:2]
+    new_w, new_h = int(bw / fg_scale), int(bh / fg_scale)
+    foreground = imresize(foreground, (new_w, new_h))
+
+    fh, fw = foreground.shape[:2]
+    x1, y1 = get_wh(0, bw - fw), get_wh(0, bh - fh)
+    mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY) > 5
+    background[y1:y1+fh, x1:x1+fw][mask] = foreground[mask]
+
+    return background, (x1, y1), (fw, fh)
+
+
+
 if __name__ == "__main__":
     import cv2
 
+    # for i in range(5):
+    #     output, coord1, _ = paste1(
+    #         "/home/laughing/codes/lqcv/lqcv/assets/bus.jpg",
+    #         "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
+    #         bg_size=640,
+    #         fg_scale=np.random.uniform(1.5, 3),
+    #     )
+    #     print(coord1)
+    #     cv2.imshow("P", output)
+    #     cv2.waitKey(0)
+
     for i in range(5):
-        output, coord1, _ = paste1(
-            "/home/laughing/codes/lqcv/lqcv/assets/bus.jpg",
+        output, coord1, _ = paste1_mask(
+            "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
             "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
             bg_size=640,
             fg_scale=np.random.uniform(1.5, 3),
