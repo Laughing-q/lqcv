@@ -1,10 +1,10 @@
-from ultralytics.models.yolo import detect
+from ultralytics.models.yolo import detect, pose, segment
 from ultralytics.utils import RANK, yaml_save
 from ultralytics.utils import colorstr
 from .dataset import LQDataset
 
 
-class LQTrainer(detect.DetectionTrainer):
+class DetectionTrainer(detect.DetectionTrainer):
     def __init__(self, overrides=None, _callbacks=None, extra_args={}):
         super().__init__(overrides=overrides, _callbacks=_callbacks)
         # pass all extra_args to self.args
@@ -36,3 +36,18 @@ class LQTrainer(detect.DetectionTrainer):
             data=self.data,
             fraction=cfg.fraction if mode == "train" else 1.0,
         )
+
+class PoseTrainer(DetectionTrainer, pose.PoseTrainer):
+    def __init__(self, overrides=None, _callbacks=None, extra_args={}):
+        if overrides is None:
+            overrides = {}
+        overrides['task'] = 'pose'
+        DetectionTrainer.__init__(self, overrides=overrides, _callbacks=_callbacks, extra_args=extra_args)
+
+
+class SegmentationTrainer(DetectionTrainer, segment.SegmentationTrainer):
+    def __init__(self, overrides=None, _callbacks=None, extra_args={}):
+        if overrides is None:
+            overrides = {}
+        overrides['task'] = 'segment'
+        DetectionTrainer.__init__(self, overrides=overrides, _callbacks=_callbacks, extra_args=extra_args)
