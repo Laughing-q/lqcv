@@ -4,28 +4,30 @@ from ultralytics.utils.instance import Instances
 from ultralytics.utils import LOGGER, colorstr
 from .augment import NBMosaic, ARandomPerspective
 from .paste_cv import paste1
+from glob import glob
 import numpy as np
 import math
 import cv2
 import os
+
 
 class LQDataset(YOLODataset):
     def __init__(self, *args, data=None, use_segments=False, use_keypoints=False, **kwargs):
         super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
         self.neg_files, self.bg_files = self._get_neg_and_bg(kwargs["hyp"].neg_dir, kwargs["hyp"].bg_dir)
 
-    def _get_neg_and_bg(self, neg_dir, bg_dir):
+    def _get_neg_and_bg(self, neg_dir: str, bg_dir: str):
         """Get negative pictures and background pictures."""
         img_neg_files, img_bg_files = [], []
         if os.path.isdir(neg_dir):
-            img_neg_files = [os.path.join(neg_dir, i) for i in os.listdir(neg_dir)]
+            img_neg_files = glob(os.path.join(neg_dir, "*"))
             LOGGER.info(
                 colorstr("Negative dir: ")
                 + f"'{neg_dir}', using {len(img_neg_files)} pictures from the dir as negative samples during training"
             )
 
         if os.path.isdir(bg_dir):
-            img_bg_files = [os.path.join(bg_dir, i) for i in os.listdir(bg_dir)]
+            img_bg_files = glob(os.path.join(bg_dir, "*"))
             LOGGER.info(
                 colorstr("Background dir: ")
                 + f"{bg_dir}, using {len(img_bg_files)} pictures from the dir as background during training"
