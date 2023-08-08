@@ -40,7 +40,7 @@ class BaseInference:
             model = self.load_torch_model(model_file)
         return model
 
-    def load_torch_model(self):
+    def load_torch_model(self, model_file):
         raise NotImplementedError
 
     def preprocess(self, im):
