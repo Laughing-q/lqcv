@@ -62,6 +62,12 @@ class BaseModel:
             # NOTE: `self.mean` and `self.std` should be numpy type
             assert isinstance(self.mean, np.ndarray) and isinstance(self.std, np.ndarray)
             im = (im - self.mean) / self.std  # do normalization in RGB order
+        if self.onnx:
+            im = im.astype(np.float32) / 255.0
+        else:
+            # NOTE: transferring to cuda first with uint8 type for faster speed.
+            im = torch.from_numpy(im).cuda().float()
+            im /= 255.0
         im = im.half() if self.half else im
         return im
 
@@ -78,12 +84,6 @@ class BaseModel:
         im = self.pre_transform(im)
         im = im.transpose((2, 0, 1))[::-1][None]  # HWC to 1CHW, BGR to RGB
         im = np.ascontiguousarray(im)  # contiguous
-        if self.onnx:
-            im = im.astype(np.float32) / 255.0
-        else:
-            # NOTE: transferring to cuda first with uint8 type for faster speed.
-            im = torch.from_numpy(im).cuda().float()
-            im /= 255.0
         return im
 
     def pre_transform(self, im):
