@@ -99,7 +99,7 @@ class BaseInference:
         """
         return cv2.resize(im, self.im_size[::-1])
 
-    def __call__(self, im):
+    def __call__(self, im, *args, **kwargs):
         """Inference
 
         Args:
@@ -111,7 +111,7 @@ class BaseInference:
         im = self.preprocess(im)
         # NOTE: assuming engine/onnx inference only supports batch=1
         if self.engine:
-            outputs = [self.model(self.get_input_dict(i[None])) for i in im]
+            outputs = [self.model(self.get_input_dict(i[None], *args, **kwargs)) for i in im]
             outputs = [
                 (torch.cat(output, dim=0) if len(output) > 1 else output[0]).clone()
                 for output in zip(*outputs)
@@ -120,7 +120,7 @@ class BaseInference:
             # depends the way of how model exported.
             outputs = self.engine_postprocess(outputs)
         elif self.onnx:
-            outputs = [self.model(self.get_input_dict(i[None])) for i in im]
+            outputs = [self.model(self.get_input_dict(i[None], *args, **kwargs)) for i in im]
             outputs = [
                 np.concatenate(output, axis=0) if len(output) > 1 else output[0]
                 for output in zip(*outputs)
@@ -129,7 +129,7 @@ class BaseInference:
             # depends the way of how model exported.
             outputs = self.onnx_postprocess(outputs)
         else:
-            outputs = self.torch_postprocess(self.model(im))
+            outputs = self.torch_postprocess(self.model(im, *args, **kwargs))
         return outputs
 
     def get_input_dict(self, im):
