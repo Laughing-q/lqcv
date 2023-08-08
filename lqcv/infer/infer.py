@@ -58,16 +58,19 @@ class BaseInference:
             im = self._single_preprocess(im)
         elif isinstance(im, list):
             im = np.concatenate([self._single_preprocess(i) for i in im], axis=0)
-        if hasattr(self, "mean") and hasattr(self, "std"):
-            # NOTE: `self.mean` and `self.std` should be numpy type
-            assert isinstance(self.mean, np.ndarray) and isinstance(self.std, np.ndarray)
-            im = (im - self.mean) / self.std  # do normalization in RGB order
-        if self.onnx:
-            im = im.astype(np.float32) / 255.0
-        else:
-            # NOTE: transferring to cuda first with uint8 type for faster speed.
-            im = torch.from_numpy(im).cuda().float()
-            im /= 255.0
+        im = im.astype(np.float32)   # to float32 type
+        if hasattr(self, "mean"):
+            # NOTE: `self.mean` should be numpy type
+            assert isinstance(self.mean, np.ndarray)
+            assert self.mean > 1.0, "The images are unnormlized, hence the mean value should be larger than 1."
+            im -= self.mean    # do normalization in RGB order
+        if hasattr(self, "std"):
+            # NOTE: `self.std` should be numpy type
+            assert isinstance(self.std, np.ndarray)
+            assert self.std > 1.0, "The images are unnormlized, hence the std value should be larger than 1."
+            im /= self.std     # do normalization in RGB order
+        if not self.onnx:
+            im = torch.from_numpy(im).cuda()   # to torch, to cuda
         im = im.half() if self.half else im
         return im
 
