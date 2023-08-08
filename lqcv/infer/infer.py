@@ -61,12 +61,12 @@ class BaseInference:
         im = im.astype(np.float32)   # to float32 type
         if hasattr(self, "mean"):
             # NOTE: `self.mean` should be numpy type
-            assert isinstance(self.mean, np.ndarray)
+            assert isinstance(self.mean, (np.ndarray, float))
             assert self.mean > 1.0, "The images are unnormlized, hence the mean value should be larger than 1."
             im -= self.mean    # do normalization in RGB order
         if hasattr(self, "std"):
             # NOTE: `self.std` should be numpy type
-            assert isinstance(self.std, np.ndarray)
+            assert isinstance(self.std, (np.ndarray, float))
             assert self.std > 1.0, "The images are unnormlized, hence the std value should be larger than 1."
             im /= self.std     # do normalization in RGB order
         if not self.onnx:
