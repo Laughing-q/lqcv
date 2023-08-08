@@ -126,13 +126,13 @@ class BaseModel:
             # depends the way of how model exported.
             outputs = self.onnx_postprocess(outputs)
         else:
-            outputs = self.postprocess(self.model(im))
+            outputs = self.torch_postprocess(self.model(im))
         return outputs
 
     def get_input_dict(self, im):
         return {"images": im}
 
-    def postprocess(self, outputs):
+    def torch_postprocess(self, outputs):
         """Postprocess for torch model."""
         return outputs
 
