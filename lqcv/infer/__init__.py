@@ -1,1 +1,1 @@
-from .infer import BaseModel
+from .infer import BaseInference

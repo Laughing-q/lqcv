@@ -6,7 +6,7 @@ from .trt import TRTModel
 from .onnx import ONNXModel
 
 
-class BaseModel:
+class BaseInference:
     def __init__(self, model_file, im_size, half=False) -> None:
         """A inference class for torch/onnx/engine models.
 
