@@ -4,26 +4,30 @@ import numpy as np
 import torch.nn as nn
 from .trt import TRTModel
 from .onnx import ONNXModel
+from .ncnn import NCNNModel
 
 
 class BaseInference:
-    def __init__(self, model_file, im_size, half=False, providers=["CUDAExecutionProvider", "CPUExecutionProvider"]) -> None:
+    def __init__(self, model_file, im_size, half=False, **kwargs) -> None:
         """A inference class for torch/onnx/engine models.
 
         Args:
-            model_file (str): The model path, pt/onnx/engine file.
+            model_file (str): The model path, pt/onnx/engine/param file, param file is ncnn model.
             im_size (tuple | int): The input size for model, it should be (h, w) order if it's a tuple.
             half (bool): Half mode for torch or trt model.
-            providers (list): Providers for onnx inference.
+            kwargs:
+                providers (list): Providers for onnx inference.
+                use_gpu (bool): Using gpu flag for ncnn.
         """
         self.half = half
         self.im_size = im_size if isinstance(im_size, tuple) else (im_size, im_size)
         self.engine = model_file.endswith(".engine")
         self.onnx = model_file.endswith(".onnx")
-        self.providers = providers
-        self.model = self.load_model(model_file)
+        self.ncnn = model_file.endswith(".param")
+
+        self.model = self.load_model(model_file, **kwargs)
         self.torch = isinstance(self.model, nn.Module)
-        if self.onnx:
+        if self.onnx or self.ncnn:
             assert self.half == False, "ONNX model is not compatible with half mode!"
         # NOTE: for torch model
         if self.torch:
@@ -31,13 +35,15 @@ class BaseInference:
             self.model.half() if half else self.model.float()
             self.model.eval()
 
-    def load_model(self, model_file):
+    def load_model(self, model_file, **kwargs):
         # create model and load weights
         if self.engine:
             model = TRTModel(model_file)
             self.half = model.half
         elif self.onnx:
-            model = ONNXModel(model_file, providers=self.providers)
+            model = ONNXModel(model_file, **kwargs)
+        elif self.ncnn:
+            model = NCNNModel(model_file, **kwargs)
         else:
             model = self.load_torch_model(model_file)
         return model
@@ -71,7 +77,7 @@ class BaseInference:
             assert isinstance(self.std, (np.ndarray, float))
             assert self.std > 1.0, "The images are unnormlized, hence the std value should be larger than 1."
             im /= self.std     # do normalization in RGB order
-        if not self.onnx:
+        if self.torch or self.engine:
             im = torch.from_numpy(im).cuda()   # to torch, to cuda
         im = im.half() if self.half else im
         return im
@@ -130,6 +136,15 @@ class BaseInference:
             # NOTE: onnx postprocess could be different from torch model,
             # depends the way of how model exported.
             outputs = self.onnx_postprocess(outputs)
+        elif self.ncnn:
+            # outputs = [self.model(self.get_input_dict(i, *args, **kwargs)) for i in im]
+            # TODO: only support once node as input for now.
+            outputs = [self.model(i, *args, **kwargs) for i in im]
+            outputs = [
+                np.concatenate(output, axis=0) if len(output) > 1 else output[0]
+                for output in zip(*outputs)
+            ]
+            outputs = self.ncnn_postprocess(outputs)
         else:
             outputs = self.torch_postprocess(self.model(im, *args, **kwargs))
         return outputs
@@ -137,14 +152,34 @@ class BaseInference:
     def get_input_dict(self, im):
         return {"images": im}
 
-    def torch_postprocess(self, outputs):
-        """Postprocess for torch model."""
+    def postprocess(self, outputs):
+        """A unify postprocess."""
         return outputs
 
+    def torch_postprocess(self, outputs):
+        """Postprocess for torch model."""
+        return self.postprocess(outputs)
+
     def engine_postprocess(self, outputs):
-        """Postprocess for engine model."""
+        """Postprocess for engine model.
+
+        Args:
+            outputs (list(torch.Tensor))
+        """
         return self.postprocess(outputs)
 
     def onnx_postprocess(self, outputs):
-        """Postprocess for onnx model."""
+        """Postprocess for onnx model.
+
+        Args:
+            outputs (list(np.ndarray))
+        """
+        return self.postprocess(outputs)
+
+    def ncnn_postprocess(self, outputs):
+        """Postprocess for ncnn model.
+
+        Args:
+            outputs (list(ncnn.Mat))
+        """
         return self.postprocess(outputs)
