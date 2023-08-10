@@ -1,5 +1,6 @@
 try:
     from ncnn_vulkan import ncnn
+    # import ncnn
 except:
     ncnn = None
 
@@ -18,12 +19,14 @@ class NCNNModel:
         p = Path(model_file)
         assert p.suffix == ".param"
         model = ncnn.Net()
+        # set vulkan before loading models
+        model.opt.use_vulkan_compute = use_gpu
+
         # load param first before loading bin.
         model.load_param(model_file)
         bin_file = p.with_suffix(".bin")
         assert bin_file.exists(), "Can't find the .bin file."
         model.load_model(str(bin_file))
-        model.opt.use_vulkan_compute = use_gpu
         self.input_names = model.input_names()
         self.output_names = model.output_names()
         self.ex = model.create_extractor()
