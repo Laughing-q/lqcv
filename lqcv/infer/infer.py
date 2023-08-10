@@ -8,24 +8,25 @@ from .ncnn import NCNNModel
 
 
 class BaseInference:
-    def __init__(self, model_file, im_size, half=False, **kwargs) -> None:
+    def __init__(self, model_file, im_size=640, half=False, providers=["CUDAExecutionProvider"], ncnn_gpu=True) -> None:
         """A inference class for torch/onnx/engine models.
 
         Args:
             model_file (str): The model path, pt/onnx/engine/param file, param file is ncnn model.
             im_size (tuple | int): The input size for model, it should be (h, w) order if it's a tuple.
             half (bool): Half mode for torch or trt model.
-            kwargs:
-                providers (list): Providers for onnx inference.
-                use_gpu (bool): Using gpu flag for ncnn.
+            providers (list): Providers for onnx inference.
+            ncnn_gpu (bool): Using gpu flag for ncnn.
         """
         self.half = half
         self.im_size = im_size if isinstance(im_size, tuple) else (im_size, im_size)
         self.engine = model_file.endswith(".engine")
         self.onnx = model_file.endswith(".onnx")
         self.ncnn = model_file.endswith(".param")
+        self.providers = providers
+        self.ncnn_gpu = ncnn_gpu
 
-        self.model = self.load_model(model_file, **kwargs)
+        self.model = self.load_model(model_file)
         self.torch = isinstance(self.model, nn.Module)
         if self.onnx or self.ncnn:
             assert self.half == False, "ONNX model is not compatible with half mode!"
@@ -35,15 +36,15 @@ class BaseInference:
             self.model.half() if half else self.model.float()
             self.model.eval()
 
-    def load_model(self, model_file, **kwargs):
+    def load_model(self, model_file):
         # create model and load weights
         if self.engine:
             model = TRTModel(model_file)
             self.half = model.half
         elif self.onnx:
-            model = ONNXModel(model_file, **kwargs)
+            model = ONNXModel(model_file, providers=self.providers)
         elif self.ncnn:
-            model = NCNNModel(model_file, **kwargs)
+            model = NCNNModel(model_file, use_gpu=self.ncnn_gpu)
         else:
             model = self.load_torch_model(model_file)
         return model
