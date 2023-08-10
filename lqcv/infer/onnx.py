@@ -12,8 +12,7 @@ class ONNXModel:
             model_file (str): The model file.
             providers (list[str]): The backend providers of onnxruntime.
         """
-        self.model_file = model_file
-        self.session = onnxruntime.InferenceSession(self.model_file, providers=providers)
+        self.session = onnxruntime.InferenceSession(model_file, providers=providers)
         inputs = self.session.get_inputs()
         input_names = []
         for input in inputs:

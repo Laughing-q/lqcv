@@ -7,18 +7,20 @@ from .onnx import ONNXModel
 
 
 class BaseInference:
-    def __init__(self, model_file, im_size, half=False) -> None:
+    def __init__(self, model_file, im_size, half=False, providers=["CUDAExecutionProvider", "CPUExecutionProvider"]) -> None:
         """A inference class for torch/onnx/engine models.
 
         Args:
             model_file (str): The model path, pt/onnx/engine file.
             im_size (tuple | int): The input size for model, it should be (h, w) order if it's a tuple.
-            half (bool): Half mode for torch model.
+            half (bool): Half mode for torch or trt model.
+            providers (list): Providers for onnx inference.
         """
         self.half = half
         self.im_size = im_size if isinstance(im_size, tuple) else (im_size, im_size)
         self.engine = model_file.endswith(".engine")
         self.onnx = model_file.endswith(".onnx")
+        self.providers = providers
         self.model = self.load_model(model_file)
         self.torch = isinstance(self.model, nn.Module)
         if self.onnx:
@@ -35,7 +37,7 @@ class BaseInference:
             model = TRTModel(model_file)
             self.half = model.half
         elif self.onnx:
-            model = ONNXModel(model_file)
+            model = ONNXModel(model_file, providers=self.providers)
         else:
             model = self.load_torch_model(model_file)
         return model
