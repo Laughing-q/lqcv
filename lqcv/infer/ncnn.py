@@ -36,6 +36,9 @@ class NCNNModel:
             
         Args:
             input (dict | np.ndarray): Inputs, with shape [C, H, W] instead of [N, C, H, W].
+
+        Returns:
+            output (List[np.ndarray])
         """
         if isinstance(input, dict):  # multiple inputs
             assert (list(input.keys()) == self.input_names), \
