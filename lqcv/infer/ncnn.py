@@ -15,7 +15,7 @@ class NCNNModel:
                 meanwhile there should be a ".bin" file in the same folder.
             use_gpu (bool): Wether to use gpu for inference.
     """
-    def __init__(self, model_file, use_gpu=False):
+    def __init__(self, model_file, use_gpu=True):
         p = Path(model_file)
         assert p.suffix == ".param"
         model = ncnn.Net()
