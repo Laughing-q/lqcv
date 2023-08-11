@@ -108,11 +108,12 @@ class BaseInference:
         """
         return cv2.resize(im, self.im_size[::-1])
 
-    def __call__(self, im, *args, **kwargs):
+    def __call__(self, im, postprocess=True, *args, **kwargs):
         """Inference
 
         Args:
             im (np.ndarray | List[ndarray] | torch.Tensor): Input image.
+            postprocess (bool): Whether to do postprocess.
 
         Returns:
 
@@ -127,7 +128,7 @@ class BaseInference:
             ]
             # NOTE: engine postprocess could be different from torch model,
             # depends the way of how model exported.
-            outputs = self.engine_postprocess(outputs)
+            outputs = self.engine_postprocess(outputs) if postprocess else outputs
         elif self.onnx:
             outputs = [self.model(self.get_input_dict(i[None], *args, **kwargs)) for i in im]
             outputs = [
@@ -136,7 +137,7 @@ class BaseInference:
             ]
             # NOTE: onnx postprocess could be different from torch model,
             # depends the way of how model exported.
-            outputs = self.onnx_postprocess(outputs)
+            outputs = self.onnx_postprocess(outputs) if postprocess else outputs
         elif self.ncnn:
             # outputs = [self.model(self.get_input_dict(i, *args, **kwargs)) for i in im]
             # TODO: only support once node as input for now.
@@ -145,9 +146,10 @@ class BaseInference:
                 np.concatenate(output, axis=0) if len(output) > 1 else output[0]
                 for output in zip(*outputs)
             ]
-            outputs = self.ncnn_postprocess(outputs)
+            outputs = self.ncnn_postprocess(outputs) if postprocess else outputs
         else:
-            outputs = self.torch_postprocess(self.model(im, *args, **kwargs))
+            outputs = self.model(im, *args, **kwargs)
+            outputs = self.torch_postprocess(outputs) if postprocess else outputs
         return outputs
 
     def get_input_dict(self, im):
