@@ -123,7 +123,7 @@ class BaseInference:
         if self.engine:
             outputs = [self.model(self.get_input_dict(i[None], *args, **kwargs)) for i in im]
             outputs = [
-                (torch.cat(output, dim=0) if len(output) > 1 else output[0]).clone()
+                (torch.cat(output, dim=0) if len(output) > 1 else output[0])
                 for output in zip(*outputs)
             ]
             # NOTE: engine postprocess could be different from torch model,
