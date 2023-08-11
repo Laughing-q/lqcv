@@ -29,7 +29,7 @@ class NCNNModel:
         model.load_model(str(bin_file))
         self.input_names = model.input_names()
         self.output_names = model.output_names()
-        self.ex = model.create_extractor()
+        self.model = model
 
     def __call__(self, input):
         """NCNN inference.
@@ -40,18 +40,19 @@ class NCNNModel:
         Returns:
             output (List[np.ndarray])
         """
+        ex = self.model.create_extractor()
         if isinstance(input, dict):  # multiple inputs
             assert (list(input.keys()) == self.input_names), \
                     f"Wrong names! Expected {self.input_names} but got {list(input.keys())}"
             for k, v in input.items():
-                self.ex.input(k, ncnn.Mat(v))
+                ex.input(k, ncnn.Mat(v))
         else:
-            self.ex.input(self.input_names[0], ncnn.Mat(input))  # one input
+            ex.input(self.input_names[0], ncnn.Mat(input))  # one input
 
         output = []
         for output_name in self.output_names:
             mat_out = ncnn.Mat()
-            self.ex.extract(output_name, mat_out)
+            ex.extract(output_name, mat_out)
             output.append(np.array(mat_out)[None])
         return output
 
