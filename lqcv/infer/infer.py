@@ -148,7 +148,8 @@ class BaseInference:
             ]
             outputs = self.ncnn_postprocess(outputs) if postprocess else outputs
         else:
-            outputs = self.model(im, *args, **kwargs)
+            with torch.no_grad():
+                outputs = self.model(im, *args, **kwargs)
             outputs = self.torch_postprocess(outputs) if postprocess else outputs
         return outputs
 
