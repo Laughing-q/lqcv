@@ -12,6 +12,8 @@ import os
 
 
 class LQDataset(YOLODataset):
+    """Ultralytics YOLODataset but with negative loading and background loading."""
+
     def __init__(self, *args, data=None, use_segments=False, use_keypoints=False, **kwargs):
         super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
         self.neg_files, self.bg_files = self._get_neg_and_bg(kwargs["hyp"].neg_dir, kwargs["hyp"].bg_dir)
@@ -102,3 +104,39 @@ class LQDataset(YOLODataset):
             )
 
         return ori_trans
+
+
+class FGDataset(YOLODataset):
+    def __init__(self, *args, data=None, use_segments=False, use_keypoints=False, **kwargs):
+        super().__init__(
+            *args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs
+        )
+        self.fg_files = self._get_fg_files(kwargs["hyp"].fg_dir)
+
+    def _get_fg_files(self, fg_dir):
+        img_fg_files = []
+        if os.path.isdir(fg_dir):
+            img_fg_files = glob(os.path.join(fg_dir, "*"))
+            LOGGER.info(
+                colorstr("Foreground dir: ")
+                + f"'{fg_dir}', using {len(img_fg_files)} pictures from the dir as foreground samples during training"
+            )
+
+    def get_labels(self):
+        labels = []
+        nkpt, ndim = self.data.get("kpt_shape", (0, 0))
+        keypoints = np.zeros((0, nkpt, ndim), dtype=np.float32) if self.use_keypoints else None
+        for im_file in self.im_files:
+            labels.append(
+                dict(
+                    im_file=im_file,
+                    shape=None,
+                    cls=np.zeros((0, 1), dtype=np.float32),
+                    bboxes=np.zeros((0, 4), dtype=np.float32),
+                    segments=[],
+                    keypoints=keypoints,
+                    normalized=True,
+                    bbox_format='xywh'
+                )
+            )
+        return

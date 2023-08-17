@@ -36,6 +36,18 @@ def get_wh(a, b):
 
 
 def paste1(foreground, background, bg_size=None, fg_scale=1.5):
+    """Paste one foreground image to another background image.
+
+    Args:
+        foreground (str | np.ndarray): The foreground image.
+        background (str | np.ndarray): The background image.
+        bg_size (int | tuple): The dst size of background, it should be (w, h) if it's a tuple.
+        fg_scale (float): Foreground scale.
+
+    Returns:
+        pasted image, pasted position, foreground size.
+
+    """
     if isinstance(foreground, str):
         foreground = cv2.imread(foreground)
     if isinstance(background, str):
@@ -47,12 +59,24 @@ def paste1(foreground, background, bg_size=None, fg_scale=1.5):
 
     fh, fw = foreground.shape[:2]
     x1, y1 = get_wh(0, bw - fw), get_wh(0, bh - fh)
-    background[y1:y1+fh, x1:x1+fw] = foreground
+    background[y1 : y1 + fh, x1 : x1 + fw] = foreground
 
     return background, (x1, y1), (fw, fh)
 
 
 def paste1_mask(foreground, background, bg_size=None, fg_scale=1.5):
+    """Paste one foreground image to another background images, and the foreground one is a binary image.
+
+    Args:
+        foreground (str | np.ndarray): The foreground image.
+        background (str | np.ndarray): The background image.
+        bg_size (int | tuple): The dst size of background, it should be (w, h) if it's a tuple.
+        fg_scale (float): Foreground scale.
+
+    Returns:
+        pasted image, pasted position, foreground size.
+
+    """
     if isinstance(foreground, str):
         foreground = cv2.imread(foreground)
     if isinstance(background, str):
@@ -66,10 +90,71 @@ def paste1_mask(foreground, background, bg_size=None, fg_scale=1.5):
     fh, fw = foreground.shape[:2]
     x1, y1 = get_wh(0, bw - fw), get_wh(0, bh - fh)
     mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY) > 5
-    background[y1:y1+fh, x1:x1+fw][mask] = foreground[mask]
+    background[y1 : y1 + fh, x1 : x1 + fw][mask] = foreground[mask]
 
     return background, (x1, y1), (fw, fh)
 
+
+def paste_masks(foregrounds, background, bg_size, fg_scale=1.5):
+    """Paste multiple foreground images to one background images, and the foreground ones are binary images.
+
+    Args:
+        foreground (List[str | np.ndarray]): The foreground images.
+        background (str | np.ndarray): The background image.
+        bg_size (int | tuple): The dst size of background, it should be (w, h) if it's a tuple.
+        fg_scale (float): Foreground scale.
+
+    Returns:
+        pasted image, pasted position, foreground size.
+
+    """
+    # scales for (w, h)
+    scales = {
+        1: [1, 1],
+        2: [1, 2],
+        3: [2, 2],
+        4: [2, 2],
+        5: [2, 3],
+        6: [2, 3],
+    }
+    foregrounds = [cv2.imread(f) if isinstance(f, str) else f for f in foregrounds]
+    num_fg = len(foregrounds)
+    assert 0 < num_fg <= 6
+
+    if isinstance(background, str):
+        background = cv2.imread(background)
+
+    scale = scales[num_fg]
+    scale = scale if np.random.uniform() < 0.5 else list(reversed(scale))
+    if bg_size is not None:
+        background = imresize(background, bg_size)
+    bh, bw = background.shape[:2]
+    x_patches, y_patches = np.meshgrid(
+        np.linspace(0, bw, scale[0] + 1),
+        np.linspace(0, bh, scale[1] + 1)
+    )
+    patchs = np.stack([x_patches, y_patches], axis=-1)
+    print(patchs)
+    for i in range(scale[0]):
+        for j in range(scale[1]):
+            n = scale[1] * i + j
+            if n > num_fg:
+                break
+            start = patchs[i][j]
+            end = patchs[i + 1][j + 1]
+            print(start, end)
+            pw, ph = int(end[0] - start[0]), int(end[1] - start[1])
+            new_w, new_h = int(pw / fg_scale), int(ph / fg_scale)
+            foreground = imresize(foregrounds[n], (new_w, new_h))
+            fh, fw = foreground.shape[:2]
+
+            x = get_wh(int(start[0]), int(end[0]) - fw)
+            y = get_wh(int(start[1]), int(end[1]) - fh)
+            mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY) > 5
+            # print(mask.shape, y, y + fh, x, x + fw)
+            # print(background[y : y + fh, x : x + fw].shape)
+            background[y : y + fh, x : x + fw][mask] = foreground[mask]
+    return background
 
 
 if __name__ == "__main__":
@@ -86,13 +171,24 @@ if __name__ == "__main__":
     #     cv2.imshow("P", output)
     #     cv2.waitKey(0)
 
+    # for i in range(5):
+    #     output, coord1, _ = paste1_mask(
+    #         "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
+    #         "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
+    #         bg_size=640,
+    #         fg_scale=np.random.uniform(1.5, 3),
+    #     )
+    #     print(coord1)
+    #     cv2.imshow("P", output)
+    #     cv2.waitKey(0)
+
     for i in range(5):
-        output, coord1, _ = paste1_mask(
-            "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
+        output = paste_masks(
+            ["/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
+             "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg"],
             "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
             bg_size=640,
             fg_scale=np.random.uniform(1.5, 3),
         )
-        print(coord1)
         cv2.imshow("P", output)
         cv2.waitKey(0)
