@@ -3,8 +3,8 @@ import random
 import cv2
 
 
-class NBMosaic(Mosaic):
-    """Mosaic that can concatenate negtive(N) images and background(G) images."""
+class NMosaic(Mosaic):
+    """Mosaic that can concatenate negtive(N) images images."""
 
     def __init__(self, dataset, imgsz=640, p=1, n=4):
         super().__init__(dataset, imgsz, p, n)

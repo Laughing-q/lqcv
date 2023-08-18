@@ -1,4 +1,4 @@
-from lqcv.ultralytics.dataset import LQDataset, FGDataset
+from lqcv.ultralytics.dataset import LQDataset
 from lqcv.utils.plot import cv2_imshow
 from ultralytics.utils.plotting import plot_images
 from ultralytics.data.utils import check_det_dataset
@@ -7,8 +7,7 @@ import cv2
 
 
 def test_lqdataset(img_path, data, mode="train"):
-    # dataset = LQDataset(
-    dataset = FGDataset(
+    dataset = LQDataset(
         img_path=img_path,
         imgsz=640,
         batch_size=2,
@@ -36,9 +35,9 @@ def test_lqdataset(img_path, data, mode="train"):
 
 if __name__ == "__main__":
     extra_args = dict(
-        # neg_dir="/d/dataset/audio/HDTF_DATA/RD25_images_lq/Radio1_0/",
+        neg_dir="/d/dataset/audio/HDTF_DATA/RD25_images_lq/Radio1_0/",
         # bg_dir="/d/dataset/长沙/car/final/20230206/images/train",
-        # area_thr=0.3,
+        area_thr=0.3,
         fg_dir="/d/dataset/smoke_fire/smoke_fire/total/masks",
     )
     for k, v in extra_args.items():
