@@ -25,6 +25,8 @@ class LQDataset(YOLODataset):
         super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
         self.neg_files = self._get_files(kwargs["hyp"].get("neg_dir", ""), prefix="negative")
         self.bg_files = self._get_files(kwargs["hyp"].get("bg_dir", ""), prefix="background")
+        if len(self.fg_files) and len(self.bg_files):
+            raise ValueError(f"`foreground` and `background` are incompatible. ")
 
     def _get_files(self, im_dir, re=["*"], prefix="image"):
         """Get image files.
