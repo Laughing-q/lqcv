@@ -1,3 +1,4 @@
+from lqcv.utils.plot import cv2_imshow
 import numpy as np
 import random
 import cv2
@@ -191,5 +192,4 @@ if __name__ == "__main__":
             # bg_size=640,
             fg_scale=np.random.uniform(1.5, 3),
         )
-        cv2.imshow("P", output)
-        cv2.waitKey(0)
+        cv2_imshow(output)

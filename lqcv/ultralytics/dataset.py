@@ -121,11 +121,13 @@ class FGDataset(YOLODataset):
     def _get_fg_files(self, fg_dir):
         img_fg_files = []
         if os.path.isdir(fg_dir):
-            img_fg_files = glob(os.path.join(fg_dir, "*"))
+            # TODO
+            img_fg_files = glob(os.path.join(fg_dir, "smoke", "*")) + glob(os.path.join(fg_dir, "fire", "*"))
             LOGGER.info(
                 colorstr("Foreground dir: ")
                 + f"'{fg_dir}', using {len(img_fg_files)} pictures from the dir as foreground samples during training"
             )
+        return img_fg_files
 
     def get_labels(self):
         labels = []
@@ -145,14 +147,15 @@ class FGDataset(YOLODataset):
                     bbox_format='ltwh'
                 )
             )
-        return
+        return labels
 
     def get_image_and_label(self, index):
         """Get background image and paste normal image on background image."""
         label = deepcopy(self.labels[index])  # requires deepcopy() https://github.com/ultralytics/ultralytics/pull/1948
+        im, _, _ = self.load_image(index)  # NOTE: for some reason to make it work, this loading is needed
         num_fg = np.random.randint(1, 7)
         fg_files = np.random.choice(self.fg_files, size=num_fg)
-        im, ltwh = paste_masks(fg_files, label["img"], bg_size=self.imgsz, fg_scale=np.random.uniform(1.5, 5))
+        im, ltwh = paste_masks(fg_files, im, bg_size=self.imgsz, fg_scale=np.random.uniform(1.5, 5))
         h, w = im.shape[:2]
         # update img and shapes
         label["img"], label['ori_shape'], label['resized_shape'] = im, (h, w), (h, w)
