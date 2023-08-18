@@ -3,7 +3,9 @@ from ultralytics.data.augment import Compose, LetterBox
 from ultralytics.utils.instance import Instances
 from ultralytics.utils import LOGGER, colorstr
 from .augment import NBMosaic, ARandomPerspective
-from .paste_cv import paste1
+from .paste_cv import paste1, paste_masks
+from pathlib import Path
+from copy import deepcopy
 from glob import glob
 import numpy as np
 import math
@@ -112,6 +114,9 @@ class FGDataset(YOLODataset):
             *args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs
         )
         self.fg_files = self._get_fg_files(kwargs["hyp"].fg_dir)
+        nc = len(self.data["names"])
+        # NOTE: get the list of cls names, self.data["names"] is a dict
+        self.cls_names = [self.data["names"][i] for i in range(nc)]
 
     def _get_fg_files(self, fg_dir):
         img_fg_files = []
@@ -126,6 +131,7 @@ class FGDataset(YOLODataset):
         labels = []
         nkpt, ndim = self.data.get("kpt_shape", (0, 0))
         keypoints = np.zeros((0, nkpt, ndim), dtype=np.float32) if self.use_keypoints else None
+        # init labels
         for im_file in self.im_files:
             labels.append(
                 dict(
@@ -136,7 +142,24 @@ class FGDataset(YOLODataset):
                     segments=[],
                     keypoints=keypoints,
                     normalized=True,
-                    bbox_format='xywh'
+                    bbox_format='ltwh'
                 )
             )
         return
+
+    def get_image_and_label(self, index):
+        """Get background image and paste normal image on background image."""
+        label = deepcopy(self.labels[index])  # requires deepcopy() https://github.com/ultralytics/ultralytics/pull/1948
+        num_fg = np.random.randint(1, 7)
+        fg_files = np.random.choice(self.fg_files, size=num_fg)
+        im, ltwh = paste_masks(fg_files, label["img"], bg_size=self.imgsz, fg_scale=np.random.uniform(1.5, 5))
+        h, w = im.shape[:2]
+        # update img and shapes
+        label["img"], label['ori_shape'], label['resized_shape'] = im, (h, w), (h, w)
+        label["bboxes"] = np.array(ltwh, dtype=np.float32)
+        label["bbox_format"] = 'ltwh'
+        label["normalized"] = False
+        cls = [self.cls_names.index(Path(fg_file).parent.stem) for fg_file in fg_files]
+        label["cls"] = np.array(cls, dtype=np.float32)[:, None]  # (n, 1)
+        label['ratio_pad'] = (1, 1)  # for evaluation
+        return self.update_labels_info(label)
