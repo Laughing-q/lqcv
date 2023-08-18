@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import cv2
 
 
@@ -95,7 +96,7 @@ def paste1_mask(foreground, background, bg_size=None, fg_scale=1.5):
     return background, (x1, y1), (fw, fh)
 
 
-def paste_masks(foregrounds, background, bg_size, fg_scale=1.5):
+def paste_masks(foregrounds, background, bg_size=None, fg_scale=1.5):
     """Paste multiple foreground images to one background images, and the foreground ones are binary images.
 
     Args:
@@ -105,7 +106,7 @@ def paste_masks(foregrounds, background, bg_size, fg_scale=1.5):
         fg_scale (float): Foreground scale.
 
     Returns:
-        pasted image, pasted position, foreground size.
+        pasted image, pasted coordinates.
 
     """
     # scales for (w, h)
@@ -134,27 +135,24 @@ def paste_masks(foregrounds, background, bg_size, fg_scale=1.5):
         np.linspace(0, bh, scale[1] + 1)
     )
     patchs = np.stack([x_patches, y_patches], axis=-1)
-    print(patchs)
-    for i in range(scale[0]):
-        for j in range(scale[1]):
-            n = scale[1] * i + j
-            if n > num_fg:
-                break
-            start = patchs[i][j]
-            end = patchs[i + 1][j + 1]
-            print(start, end)
-            pw, ph = int(end[0] - start[0]), int(end[1] - start[1])
-            new_w, new_h = int(pw / fg_scale), int(ph / fg_scale)
-            foreground = imresize(foregrounds[n], (new_w, new_h))
-            fh, fw = foreground.shape[:2]
+    ranges = [(patchs[i][j], patchs[i + 1][j + 1]) for i in range(scale[1]) for j in range(scale[0])]
+    random.shuffle(ranges)
+    ltwh = []
+    for i, (start, end) in enumerate(ranges):
+        if i >= num_fg:
+            break
+        pw, ph = int(end[0] - start[0]), int(end[1] - start[1])
+        new_w, new_h = int(pw / fg_scale), int(ph / fg_scale)
+        foreground = imresize(foregrounds[i], (new_w, new_h))
+        fh, fw = foreground.shape[:2]
 
-            x = get_wh(int(start[0]), int(end[0]) - fw)
-            y = get_wh(int(start[1]), int(end[1]) - fh)
-            mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY) > 5
-            # print(mask.shape, y, y + fh, x, x + fw)
-            # print(background[y : y + fh, x : x + fw].shape)
-            background[y : y + fh, x : x + fw][mask] = foreground[mask]
-    return background
+        x = get_wh(int(start[0]), int(end[0]) - fw)
+        y = get_wh(int(start[1]), int(end[1]) - fh)
+        mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY) > 5
+        background[y : y + fh, x : x + fw][mask] = foreground[mask]
+        ltwh.append([x, y, fw, fh])
+
+    return background, ltwh
 
 
 if __name__ == "__main__":
@@ -183,11 +181,14 @@ if __name__ == "__main__":
     #     cv2.waitKey(0)
 
     for i in range(5):
-        output = paste_masks(
-            ["/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
-             "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg"],
+        output, _ = paste_masks(
+            [
+                "/d/dataset/smoke_fire/smoke_fire/total/masks/smoke/(71)_1.jpg",
+                "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
+                "/d/dataset/smoke_fire/smoke_fire/total/masks/fire/(2)_0.jpg",
+             ],
             "/home/laughing/codes/lqcv/lqcv/assets/zidane.jpg",
-            bg_size=640,
+            # bg_size=640,
             fg_scale=np.random.uniform(1.5, 3),
         )
         cv2.imshow("P", output)
