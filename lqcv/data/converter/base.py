@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
 from lqcv.utils.log import LOGGER
-from lqcv.utils.plot import plot_one_box, colors
 from collections import defaultdict
 from tqdm import tqdm
 from pathlib import Path
@@ -237,11 +236,14 @@ class BaseConverter(metaclass=ABCMeta):
             os.makedirs(save_dir, exist_ok=True)
         else:
             cv2.namedWindow("p", cv2.WINDOW_NORMAL)
+
+        from ultralytics.utils.plotting import Annotator, colors
         for label in pbar:
             plotted = False
             try:
                 filename = label["img_name"]
                 image = cv2.imread(osp.join(self.img_dir, filename))
+                annotator = Annotator(image, line_width=2)
                 if image is None:
                     continue
                 cls = label["cls"]
@@ -252,13 +254,7 @@ class BaseConverter(metaclass=ABCMeta):
                     bbox = bbox[idx]
                 bbox.convert("xyxy")
                 for i, c in enumerate(cls):
-                    plot_one_box(
-                        bbox.data[i],
-                        image,
-                        color=colors(int(c)),
-                        line_thickness=2,
-                        label=self.class_names[int(c)],
-                    )
+                    annotator.box_label(bbox.data[i], self.class_names[int(c)], color=colors(int(c)))
                     plotted = True
             except Exception as e:
                 LOGGER.warning(e)
@@ -266,9 +262,9 @@ class BaseConverter(metaclass=ABCMeta):
             if not plotted:
                 continue
             if save_dir:
-                cv2.imwrite(osp.join(save_dir, filename), image)
+                cv2.imwrite(osp.join(save_dir, filename), annotator.result())
             else:
-                cv2.imshow("p", image)
+                cv2.imshow("p", annotator.result())
                 if cv2.waitKey(0) == ord("q"):
                     break
 

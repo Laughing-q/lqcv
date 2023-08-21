@@ -42,11 +42,11 @@ def test_coco(json_file, img_dir=None):
 
 
 if __name__ == "__main__":
-    # test_yolo(
-    #     label_dir="/d/dataset/ultralytics_test/test/suit_mask/labels",
-    #     class_names=["mask", "unmask", "suit", "unsuit"],
-    #     img_dir=None
-    # )
+    test_yolo(
+        label_dir="/d/dataset/ultralytics_test/helmet_sub/labels/val",
+        class_names=["mask", "unmask", "suit", "unsuit"],
+        img_dir=None
+    )
 
     # test_xml(
     #     label_dir="/d/dataset/ultralytics_test/test/suit_mask/xmls",
@@ -55,10 +55,10 @@ if __name__ == "__main__":
     #     img_dir=None
     # )
 
-    test_coco(
-        json_file="/d/dataset/COCO/annotations/instances_val2017.json",
-        img_dir="/d/dataset/COCO/images/val2017",
-    )
+    # test_coco(
+    #     json_file="/d/dataset/COCO/annotations/instances_val2017.json",
+    #     img_dir="/d/dataset/COCO/images/val2017",
+    # )
 
     # official coco dataset
     # test_coco(
