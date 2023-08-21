@@ -1,6 +1,5 @@
 from lqcv.ultralytics.dataset import LQDataset
-from lqcv.utils.plot import cv2_imshow
-from ultralytics.utils.plotting import plot_images
+from lqcv.utils.plot import cv2_imshow, plot_images
 from ultralytics.data.utils import check_det_dataset
 from ultralytics.cfg import DEFAULT_CFG as cfg
 import cv2
