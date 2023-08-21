@@ -1,9 +1,3 @@
-from pathlib import Path
-import numpy as np
-import cv2
-import os.path as osp
-import os
-
 IMG_FORMATS = [
     "bmp",
     "jpg",
@@ -29,4 +23,3 @@ VID_FORMATS = [
     "flv",
     "ts",
 ]  # acceptable video suffixes
-
