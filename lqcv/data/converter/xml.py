@@ -55,8 +55,9 @@ class XMLConverter(YOLOConverter):
                     assert (filename is not None), f"can't get `filename` info from {xml_file}"
                     filename = str(filename.text)
                     if filename != img_name:
+                        LOGGER.warning(f"[Filename] filename got different name from image name, \
+                                {filename} vs {img_name} using image name(the latter)!")
                         filename = img_name
-                        LOGGER.warning("[Filename] filename got different name from image name, using image name!")
                     try:
                         size = xml.find("size")
                         width = size.find("width")
