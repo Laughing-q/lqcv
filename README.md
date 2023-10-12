@@ -1,2 +1,2 @@
 # lqcv
-This is my computer vision lib.
+This is my personal computer vision lib.
