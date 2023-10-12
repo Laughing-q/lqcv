@@ -8,8 +8,10 @@ def waitKey(delay=1):
     LQCV_PAUSE = True if key == ord(' ') else False
     return key
 
-def cv2_imshow(im, delay=0, wname="p"):
+def cv2_imshow(im, delay=0, wname="p", nwindow=False):
     """A prepared cv2.imshow to reduce duplicate code."""
+    if nwindow:
+        cv2.namedWindow(wname, cv2.WINDOW_NORMAL)
     cv2.imshow(wname, im)
     if waitKey(delay) == ord('q'):
         exit()

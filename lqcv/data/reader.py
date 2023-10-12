@@ -297,7 +297,7 @@ class ReadVideosAndImages:
 
 class Images(ReadVideosAndImages):
     """Read Images."""
-    def __init__(self, source: str, imgsz=None, im_only=False):
+    def __init__(self, source: str, imgsz=None, im_only=False, shuffle=False):
         """Images
 
         Args:
@@ -305,6 +305,8 @@ class Images(ReadVideosAndImages):
             imgsz (tuple | optional): Image size, (height, width)
             im_only (bool | optional): Whether to return image only, or it'll return
                 image, path and description.
+            shuffle (bool): Whether to shuffle images, this option could be useful 
+                when randomly checking a part of the whole images.
         """
         p = str(Path(source).resolve())  # os-agnostic absolute path
         if "*" in p:
@@ -316,8 +318,10 @@ class Images(ReadVideosAndImages):
         else:
             raise Exception(f"ERROR: {p} does not exist")
 
-        # random.shuffle(files)
         images = [x for x in files if x.split(".")[-1].lower() in IMG_FORMATS]
+        if shuffle:
+            import random
+            random.shuffle(images)
         ni = len(images)
 
         self.files = images
