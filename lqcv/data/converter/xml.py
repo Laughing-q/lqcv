@@ -1,5 +1,6 @@
 from .yolo import YOLOConverter
 from lqcv.bbox import Boxes
+from lqcv.utils.log import LOGGER
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -53,7 +54,9 @@ class XMLConverter(YOLOConverter):
                     filename = xml.find("filename")
                     assert (filename is not None), f"can't get `filename` info from {xml_file}"
                     filename = str(filename.text)
-                    # filename = Path(xml_file).name
+                    if filename != img_name:
+                        filename = img_name
+                        LOGGER.warning("[Filename] filename got different name from image name, using image name!")
                     try:
                         size = xml.find("size")
                         width = size.find("width")
