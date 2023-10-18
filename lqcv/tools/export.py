@@ -38,7 +38,7 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
     today = time.strftime("%Y%m%d", time.localtime())
     # export model
     model = YOLO(weight)
-    file_path = model.export(format=format, imgsz=imgsz)
+    file_path = model.export(format=format, imgsz=imgsz, opset=12)
 
     h, w = imgsz
     output_name = f"{model_name}_{h}x{w}{model_type}_{today}"
