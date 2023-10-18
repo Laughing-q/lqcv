@@ -3,7 +3,7 @@ import shutil
 import time
 
 
-def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_pt=False):
+def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_pt=False, check_dim=False):
     """Export yolov8 models to specific path and name. 
 
         The logic in this function is based on the output file structure of yolov8 training, 
@@ -16,6 +16,7 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
         imgsz (List | tuple): Image size, (height, width).
         copy_pt (bool): Whether to copy the original pt file to the same save_dir 
             with exactly the same name.
+        check_dim (bool): Check the dimension of the output.
 
     Returns:
         save_path (str): The final path of exported model.
@@ -47,4 +48,14 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
     shutil.move(file_path, save_path)
     if copy_pt:
         shutil.copyfile(weight, str(Path(save_dir) / f"{output_name}.pt"))
+
+    if check_dim:
+        import onnx
+        model = onnx.load(save_path)
+        current_dim = model.graph.output[0].type.tensor_type.shape.dim[1].dim_value
+        expected_dim = 0
+        for stride in [8, 16, 32]:
+            expected_dim += (h / stride) * (w / stride)
+        assert int(expected_dim) == int(current_dim), \
+                f"Expected {int(expected_dim)} but got {current_dim}, you should add permute operation!"
     return save_path
