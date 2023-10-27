@@ -21,6 +21,8 @@ class LQDataset(YOLODataset):
         # NOTE: get the list of cls names, self.data["names"] is a dict
         self.cls_names = [data["names"][i] for i in range(nc)]
         self.fg_files = self._get_fg_files(kwargs["hyp"].get("fg_dir", ""))
+        if len(self.fg_files):
+            kwargs["rect"] = False   # NOTE: rect will not be working if using fg_files
 
         super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
         self.neg_files = self._get_files(kwargs["hyp"].get("neg_dir", ""), prefix="negative")
