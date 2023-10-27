@@ -101,7 +101,8 @@ class LQDataset(YOLODataset):
         """Get background image and paste normal image on background image."""
         if len(self.fg_files):
             label = deepcopy(self.labels[index])  # requires deepcopy() https://github.com/ultralytics/ultralytics/pull/1948
-            im, _, _ = self.load_image(index)  # NOTE: for some reason to make the workflow work, this loading is needed
+            im, shape, _ = self.load_image(index)  # NOTE: for some reason to make the workflow work, this loading is needed
+            label["shape"] = shape   # NOTE: for rect, val mode
             num_fg = np.random.randint(1, 7)
             fg_files = np.random.choice(self.fg_files, size=num_fg)
             im, ltwh = paste_masks(fg_files, im, bg_size=self.imgsz, fg_scale=np.random.uniform(1.5, 5))
