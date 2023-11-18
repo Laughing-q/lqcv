@@ -213,7 +213,7 @@ class BaseConverter(metaclass=ABCMeta):
     def read_labels(self, label_dir):
         pass
 
-    def visualize(self, save_dir=None, classes=[]):
+    def visualize(self, save_dir=None, classes=[], show_labels=True):
         """Visualize labels.
 
         Args:
@@ -221,6 +221,7 @@ class BaseConverter(metaclass=ABCMeta):
                 if it's None then just show the images.
             classes (List[int | str] | optional): To specify the classes to visualize, it's a list contains
                 the cls index or class name.
+            show_labels (bool): Whether to show label names, default: True.
         """
         if not osp.exists(self.img_dir):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
@@ -254,7 +255,7 @@ class BaseConverter(metaclass=ABCMeta):
                     bbox = bbox[idx]
                 bbox.convert("xyxy")
                 for i, c in enumerate(cls):
-                    annotator.box_label(bbox.data[i], self.class_names[int(c)], color=colors(int(c)))
+                    annotator.box_label(bbox.data[i], self.class_names[int(c)] if show_labels else None, color=colors(int(c)))
                     plotted = True
             except Exception as e:
                 LOGGER.warning(e)
