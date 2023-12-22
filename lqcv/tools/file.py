@@ -50,7 +50,7 @@ def remove_extra_files(more_dir, less_dir, target_dir=None, reverse=False):
         shutil.move(file, target_dir) if target_dir else os.remove(file)
 
 
-def split_data(data_dir, ratio=0.8):
+def split_images(data_dir, ratio=0.8):
     """Split the data to train/val set.
 
     Args:
@@ -72,6 +72,29 @@ def split_data(data_dir, ratio=0.8):
             shutil.move(file, train_dir)
         else:
             shutil.move(file, val_dir)
+
+
+def split_images_labels(data_dir, ratio=0.8):
+    """Split the data to train/val set.
+    Assuming the data structure is like:
+        --data_dir
+            --images
+            --labels
+    Args:
+        data_dir (str): Data directory.
+        ratio (float): The split ratio for train set, (1 - ratio) for val set.
+    """
+    image_dir = os.path.join(data_dir, "images")
+    assert os.path.exists(image_dir), f"Invalid directory `{image_dir}`."
+    # split images
+    split_images(image_dir, ratio)
+
+    # split labels
+    label_dir = os.path.join(data_dir, "labels")
+    train_dir = os.path.join(label_dir, "train")
+    val_dir = os.path.join(label_dir, "val")
+    remove_extra_files(more_dir=label_dir, less_dir=f"{image_dir}/train", target_dir=train_dir, reverse=True)
+    remove_extra_files(more_dir=label_dir, less_dir=f"{image_dir}/val", target_dir=val_dir, reverse=True)
 
 
 if __name__ == "__main__":
