@@ -1,8 +1,8 @@
 opencv-python
 numpy
-torch
 tqdm
 
 # tensorrt
 # onnxruntime
 # ultralytics
+# torch
