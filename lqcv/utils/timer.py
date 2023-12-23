@@ -1,13 +1,16 @@
-# from time import time
-import time
-import torch
+from lqcv.utils.log import LOGGER
 import functools
+import time
 
 
 def time_sync():
     # pytorch-accurate time
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+    except:
+        LOGGER.warning("Please install torch first!")
     return time.time()
 
 
