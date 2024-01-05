@@ -97,7 +97,7 @@ class ARandomPerspective(RandomPerspective):
         """
         w1, h1 = box1[2] - box1[0], box1[3] - box1[1]
         w2, h2 = box2[2] - box2[0], box2[3] - box2[1]
-        area_thr = np.array(self.area_thr)[cls.astype(np.int)] if isinstance(area_thr, list) else area_thr
+        area_thr = np.array(self.area_thr)[cls.astype(np.int)] if isinstance(self.area_thr, list) else self.area_thr
         if isinstance(area_thr, list) and len(area_thr) == 1:
             area_thr = area_thr[0]
         ar = np.maximum(w2 / (h2 + eps), h2 / (w2 + eps))  # aspect ratio
