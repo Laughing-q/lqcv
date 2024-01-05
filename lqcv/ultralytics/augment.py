@@ -149,7 +149,7 @@ class ARandomPerspective(RandomPerspective):
         # Filter instances
         instances.scale(scale_w=scale, scale_h=scale, bbox_only=True)
         # Make the bboxes have the same scale with new_bboxes
-        i = self.box_candidates(box1=instances.bboxes.T, box2=new_instances.bboxes.T, cls=cls)
+        i = self.box_candidates(box1=instances.bboxes.T, box2=new_instances.bboxes.T, cls=cls.squeeze(-1))
         labels["instances"] = new_instances[i]
         labels["cls"] = cls[i]
         labels["img"] = img
