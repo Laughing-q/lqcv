@@ -104,7 +104,7 @@ class ARandomPerspective(RandomPerspective):
         return (
             (w2 > wh_thr)
             & (h2 > wh_thr)
-            & (w2 * h2 / (w1 * h1 + eps) > self.area_thr)
+            & (w2 * h2 / (w1 * h1 + eps) > area_thr)
             & (ar < ar_thr)
         )  # candidates
 
