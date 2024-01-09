@@ -77,7 +77,7 @@ class ARandomPerspective(RandomPerspective):
         area_thr=0.1,
     ):
         super().__init__(degrees, translate, scale, shear, perspective, border, pre_transform)
-        self.area_thr = area_thr   # list
+        self.area_thr = area_thr[0] if isinstance(area_thr, list) and len(area_thr) == 1 else area_thr   # list
 
     def box_candidates(self, box1, box2, cls, wh_thr=2, ar_thr=100, eps=1e-16):
         """
@@ -98,8 +98,6 @@ class ARandomPerspective(RandomPerspective):
         w1, h1 = box1[2] - box1[0], box1[3] - box1[1]
         w2, h2 = box2[2] - box2[0], box2[3] - box2[1]
         area_thr = np.array(self.area_thr)[cls.astype(np.int)] if isinstance(self.area_thr, list) else self.area_thr
-        if isinstance(area_thr, list) and len(area_thr) == 1:
-            area_thr = area_thr[0]
         ar = np.maximum(w2 / (h2 + eps), h2 / (w2 + eps))  # aspect ratio
         return (
             (w2 > wh_thr)
