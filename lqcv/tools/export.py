@@ -32,10 +32,9 @@ def export_yolov8(weight, onnx_dir="./", format="onnx", imgsz=[384, 640], pt_dir
     # get the model type, and model name from the name of data.yaml
     model_type = Path(args["model"]).stem[-1]
     model_name = Path(args["data"]).stem
-    project_name = Path(args["name"])
     # NOTE: get the date, as the format of project_name is `model_name`+`date`.
     # Also the model_name is same as the name of data.yaml.
-    date = project_name.replace(model_name, "")
+    date = args["name"].replace(model_name, "")
     # upper the first letter
     model_name = model_name[0].upper() + model_name[1:]
     # export model
