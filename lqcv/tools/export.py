@@ -1,9 +1,8 @@
 from pathlib import Path
 import shutil
-import time
 
 
-def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_pt=False, check_dim=False):
+def export_yolov8(weight, onnx_dir="./", format="onnx", imgsz=[384, 640], pt_dir=None, check_dim=False):
     """Export yolov8 models to specific path and name. 
 
         The logic in this function is based on the output file structure of yolov8 training, 
@@ -14,7 +13,7 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
         save_dir (str | pathlib): The directory to put the output exported model.
         format (str): Export format.
         imgsz (List | tuple): Image size, (height, width).
-        copy_pt (bool): Whether to copy the original pt file to the same save_dir 
+        pt_dir (Optional | str): Whether to copy the original pt file to the pt_dir 
             with exactly the same name.
         check_dim (bool): Check the dimension of the output.
 
@@ -33,21 +32,23 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
     # get the model type, and model name from the name of data.yaml
     model_type = Path(args["model"]).stem[-1]
     model_name = Path(args["data"]).stem
+    project_name = Path(args["name"])
+    # NOTE: get the date, as the format of project_name is `model_name`+`date`.
+    # Also the model_name is same as the name of data.yaml.
+    date = project_name.replace(model_name, "")
     # upper the first letter
     model_name = model_name[0].upper() + model_name[1:]
-
-    today = time.strftime("%Y%m%d", time.localtime())
     # export model
     model = YOLO(weight)
     file_path = model.export(format=format, imgsz=imgsz, opset=12)
 
     h, w = imgsz
-    output_name = f"{model_name}_{h}x{w}{model_type}_{today}"
+    output_name = f"{model_name}_{h}x{w}{model_type}_{date}"
     output = output_name + str(Path(file_path).suffix)
-    save_path = str(Path(save_dir) / output)
+    save_path = str(Path(onnx_dir) / output)
     shutil.move(file_path, save_path)
-    if copy_pt:
-        shutil.copyfile(weight, str(Path(save_dir) / f"{output_name}.pt"))
+    if pt_dir is not None and Path(pt_dir).exists():
+        shutil.copyfile(weight, str(Path(pt_dir) / f"{output_name}.pt"))
 
     if check_dim:
         import onnx
@@ -58,4 +59,4 @@ def export_yolov8(weight, save_dir="./", format="onnx", imgsz=[384, 640], copy_p
             expected_dim += (h / stride) * (w / stride)
         assert int(expected_dim) == int(current_dim), \
                 f"Expected {int(expected_dim)} but got {current_dim}, you should add permute operation!"
-    return save_path
+    return output
