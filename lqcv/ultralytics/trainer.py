@@ -1,6 +1,7 @@
 from ultralytics.models.yolo import detect, pose, segment
 from ultralytics.utils import RANK, yaml_save
 from ultralytics.utils import colorstr
+from copy import copy
 from .dataset import LQDataset
 
 
@@ -8,6 +9,7 @@ class DetectionTrainer(detect.DetectionTrainer):
     def __init__(self, overrides=None, _callbacks=None, extra_args={}):
         super().__init__(overrides=overrides, _callbacks=_callbacks)
         # pass all extra_args to self.args
+        self.val_args = copy(self.args)
         for k, v in extra_args.items():
             self.args.__setattr__(k, v)
         # save the args again with extra_args
@@ -35,6 +37,13 @@ class DetectionTrainer(detect.DetectionTrainer):
             classes=cfg.classes,
             data=self.data,
             fraction=cfg.fraction if mode == "train" else 1.0,
+        )
+
+    def get_validator(self):
+        """Returns a DetectionValidator for YOLO model validation."""
+        self.loss_names = "box_loss", "cls_loss", "dfl_loss"
+        return detect.DetectionValidator(
+            self.test_loader, save_dir=self.save_dir, args=copy(self.val_args), _callbacks=self.callbacks
         )
 
 class PoseTrainer(DetectionTrainer, pose.PoseTrainer):
