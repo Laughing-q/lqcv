@@ -1,4 +1,6 @@
 from lqcv.simi.hash import img_hash, cmpImgHash_np, pHash, cmpHash_np
+from lqcv.utils.log import LOGGER
+from pathlib import Path
 from tqdm import tqdm
 import os
 import os.path as osp
@@ -7,76 +9,86 @@ import cv2
 import shutil
 
 
-def similarity(img_dir, remove_dir, threshold=0.95, count_only=False, start=0, end=-1, stype="phash", save=True, name=''):
+def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''):
     """Compute the similarity between images and remove these images with high similarity.
 
     Args:
         img_dir (str): Image dir.
-        remove_dir (str): Remove dir.
         threshold (float): The threshold, range [0, 1].
         count_only (bool): Only count how many images will be removed, intead of actually removing them.
-        start (int): The index to start with, in case there are too many images, default: 0.
-        end (int): The index to end with, in case there are too many images, default: -1.
         stype (str): The calculation type of similarity, could be `phash` and `img`.
-        save (bool): There are two modes, save mode and remove mode. Usually the workflow is save(mode) first 
-            then remove(mode).
         name (str): The save name for HashValues and HashNames.
     """
     assert stype in ["phash", "img"]
     compute = pHash if stype == "phash" else img_hash
     compare = cmpHash_np if stype == "phash" else cmpImgHash_np
 
-    if save:
-        if osp.exists(f"{name}Value.txt"):
-            os.remove(f"{name}Value.txt")
-        if osp.exists(f"{name}Name.txt"):
-            os.remove(f"{name}Name.txt")
-
-        imgs_lists = sorted(os.listdir(img_dir))
-        pbar = tqdm(imgs_lists, total=len(imgs_lists))
+    def _create_values(filename_path, value_path):
+        """Create new hash map."""
+        if osp.exists(filename_path):
+            os.remove(filename_path)
+        if osp.exists(value_path):
+            os.remove(value_path)
+        imgs_lists = os.listdir(img_dir)
+        pbar = tqdm(imgs_lists, total=len(imgs_lists), desc="Creating values")
         for p in pbar:
             img = cv2.imread(osp.join(img_dir, p))
             # assert img is not None
             if img is None:
                 os.remove(osp.join(img_dir, p))   # remove broken images.
                 continue
-            with open(f"{name}Value.txt", "a") as fv:
+            with open(value_path, "a") as fv:
                 fv.write(str(compute(img)).replace("[", "").replace("]", "").replace(",", "") + "\n")
-            with open(f"{name}Name.txt", "a") as fn:
+            with open(filename_path, "a") as fn:
                 fn.write(p + "\n")
-    else:
-        os.makedirs(remove_dir, exist_ok=True)
 
-        with open(f"{name}Name.txt", "r") as f:
-            names = [i.strip() for i in f.readlines()][start:end]
-        values = np.loadtxt(f"{name}Value.txt", dtype=np.uint8)[start:end]
-        removed_idx = []
-        counter = 0
+    im_parent = Path(img_dir).parent
+    filename = im_parent / f"{name}Name.txt"
+    value = im_parent / f"{name}Value.txt"
+    if not (filename.exists() and value.exists()):
+        LOGGER.info("Can't find Name.txt or Value.txt! Creating automatically!")
+        _create_values(str(filename), str(value))
 
-        pbar = tqdm(enumerate(values), total=len(values))
-        pbar.desc = f"{name}"
-        for i, v in pbar:
-            d = compare(v, values)  # distance
-            if d.ndim == 2:
-                d = d.squeeze(-1)
-            s = (64 - d.astype(np.float32)) / 64  # similarity
-            if (not (s > threshold).any()) or i in removed_idx:
+    im_names = os.listdir(img_dir)
+    with open(str(filename), "r") as f:
+        names = [i.strip() for i in f.readlines()]
+    values = np.loadtxt(str(value), dtype=np.uint8)
+    if len(names) != len(values) or names != im_names:
+        LOGGER.info("`names` is not matched! Creating new one automatically!")
+        _create_values(str(filename), str(value))
+        # reload names and values
+        with open(str(filename), "r") as f:
+            names = [i.strip() for i in f.readlines()]
+        values = np.loadtxt(str(value), dtype=np.uint8)
+
+    remove_dir = (im_parent / "removed")
+    remove_dir.mkdir(parents=True, exist_ok=True)
+    removed_idx = []
+    counter = 0
+
+    pbar = tqdm(enumerate(values), total=len(values))
+    pbar.desc = f"{name}"
+    for i, v in pbar:
+        d = compare(v, values)  # distance
+        if d.ndim == 2:
+            d = d.squeeze(-1)
+        s = (64 - d.astype(np.float32)) / 64  # similarity
+        if (not (s > threshold).any()) or i in removed_idx:
+            continue
+        indexes = np.argwhere(s[i + 1 :] > threshold).squeeze(-1) + i + 1
+        if len(indexes) == 0:
+            continue
+        idx_dir = osp.join(remove_dir, f"{names[i]}")
+        for idx in indexes:
+            if idx in removed_idx:
                 continue
-            indexes = np.argwhere(s[i + 1 :] > threshold).squeeze(-1) + i + 1
-            if len(indexes) == 0:
+            removed_idx.append(idx)
+            counter += 1
+            if count_only:
                 continue
-            # idx_dir = osp.join(target_dir, f"{i + start}")
-            idx_dir = osp.join(remove_dir, f"{names[i]}")
-            for idx in indexes:
-                if idx in removed_idx:
-                    continue
-                removed_idx.append(idx)
-                counter += 1
-                if count_only:
-                    continue
-                os.makedirs(idx_dir, exist_ok=True)
-                shutil.move(osp.join(img_dir, names[idx]), idx_dir)
-        print(f"keep counter:{len(values) - counter}/{len(values)}", )
+            os.makedirs(idx_dir, exist_ok=True)
+            shutil.move(osp.join(img_dir, names[idx]), idx_dir)
+    print(f"keep counter:{len(values) - counter}/{len(values)}", )
 
 
 def generate_fog(img):

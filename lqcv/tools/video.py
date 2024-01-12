@@ -34,9 +34,8 @@ def videos2images(video_dir, save_dir, interval=1, count_only=False, tail=""):
         h, w = img.shape[:2]
         total += 1
         s += f" WxH:({w}x{h}) file:{video_name} current: {total}"
-        # reader.save(os.path.join(save_dir, video_name), img)   # save videos
-        im_name = f"{video_name}_{reader.frame}_{tail}.jpg"
-        cv2.imwrite(os.path.join(save_dir, im_name), img)   # save videos
+        im_name = f"{video_name}_{str(reader.frame).zfill(6)}_{tail}.jpg"
+        cv2.imwrite(os.path.join(save_dir, im_name), img)
         print(s)
 
 if __name__ == "__main__":
