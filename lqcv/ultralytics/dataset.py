@@ -134,7 +134,7 @@ class LQDataset(YOLODataset):
         return label
 
     def update_labels_info(self, label, neg=False):
-        segments = label.pop('segments')
+        segments = label.pop('segments', [])
         segment_resamples = 100 if self.use_obb else 1000
         if len(segments) > 0:
             # list[np.array(1000, 2)] * num_samples
