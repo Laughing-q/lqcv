@@ -2,6 +2,7 @@ from ultralytics.data.dataset import YOLODataset
 from ultralytics.data.augment import Compose, LetterBox
 from ultralytics.utils.instance import Instances
 from ultralytics.utils import LOGGER, colorstr
+from ultralytics.utils.ops import resample_segments
 from .augment import NMosaic, ARandomPerspective
 from .paste_cv import paste1, paste_masks
 from pathlib import Path
@@ -133,11 +134,19 @@ class LQDataset(YOLODataset):
         return label
 
     def update_labels_info(self, label, neg=False):
+        segment_resamples = 100 if self.use_obb else 1000
+        if len(segments) > 0:
+            # list[np.array(1000, 2)] * num_samples
+            # (N, 1000, 2)
+            segments = np.stack(resample_segments(segments, n=segment_resamples), axis=0)
+        else:
+            segments = np.zeros((0, segment_resamples, 2), dtype=np.float32)
+
         if neg:
             # Return empty Instances if neg
             nkpt, ndim = self.data.get('kpt_shape', (0, 0))
             keypoints = np.zeros((0, nkpt, ndim), dtype=np.float32) if self.use_keypoints else None
-            label['instances'] = Instances(bboxes=np.zeros((0, 4), dtype=np.float32), keypoints=keypoints)
+            label['instances'] = Instances(bboxes=np.zeros((0, 4), dtype=np.float32), keypoints=keypoints, segments=segments)
             return label
         bboxes = label.pop('bboxes')
         segments = label.pop('segments')
