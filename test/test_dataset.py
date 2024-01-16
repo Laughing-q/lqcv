@@ -15,8 +15,7 @@ def test_lqdataset(img_path, data, mode="train"):
         rect=cfg.rect or mode == "val",
         stride=32,
         pad=0.0 if mode == "train" else 0.5,
-        use_segments=False,
-        use_keypoints=False,
+        task='detect',
         data=data,
     )
     for label in dataset:

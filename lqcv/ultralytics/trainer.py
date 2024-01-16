@@ -36,6 +36,7 @@ class DetectionTrainer(detect.DetectionTrainer):
             use_keypoints=cfg.task == "pose",
             classes=cfg.classes,
             data=self.data,
+            task=cfg.task,
             fraction=cfg.fraction if mode == "train" else 1.0,
         )
 

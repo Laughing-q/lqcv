@@ -16,7 +16,7 @@ import os
 class LQDataset(YOLODataset):
     """Ultralytics YOLODataset but with negative loading and background loading."""
 
-    def __init__(self, *args, data=None, use_segments=False, use_keypoints=False, **kwargs):
+    def __init__(self, *args, data=None, task='detect', **kwargs):
         nc = len(data["names"])
         # NOTE: get the list of cls names, self.data["names"] is a dict
         self.cls_names = [data["names"][i] for i in range(nc)]
@@ -24,7 +24,7 @@ class LQDataset(YOLODataset):
         if len(self.fg_files):
             kwargs["rect"] = False   # NOTE: rect will not be working if using fg_files
 
-        super().__init__(*args, data=data, use_segments=use_segments, use_keypoints=use_keypoints, **kwargs)
+        super().__init__(*args, data=data, task=task, **kwargs)
         self.neg_files = self._get_files(kwargs["hyp"].get("neg_dir", ""), prefix="negative")
         self.bg_files = self._get_files(kwargs["hyp"].get("bg_dir", ""), prefix="background")
         if len(self.fg_files) and len(self.bg_files):
