@@ -32,8 +32,6 @@ class DetectionTrainer(detect.DetectionTrainer):
             stride=int(gs),
             pad=0.0 if mode == "train" else 0.5,
             prefix=colorstr(f"{mode}: "),
-            use_segments=cfg.task == "segment",
-            use_keypoints=cfg.task == "pose",
             classes=cfg.classes,
             data=self.data,
             task=cfg.task,
