@@ -3,15 +3,17 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 from lqcv.data import Videos
+from .image import resize
 
 
-def videos2images(video_dir, save_dir, interval=1, count_only=False, tail=""):
+def videos2images(video_dir, save_dir, interval=1, count_only=False, max_size=None, tail=""):
     """Clip images from videos.
 
     Args:
         video_dir (str): a dir includes videos or just a video path.
         save_dir (str): a dir to keep images.
         interval (int): save interval, unit is seconds.
+        max_size (optional | int): The max size for the image.
         count_only (bool): Only count how many images will be saved, intead of actually saving them.
         tail (str): Special tail for image name.
     """
@@ -25,17 +27,22 @@ def videos2images(video_dir, save_dir, interval=1, count_only=False, tail=""):
         print(f"{reader.nf} videos will generate {int(total)} pics({interval}s/pic)")
         return
     os.makedirs(save_dir, exist_ok=True)
-    for img, p, s in reader:
+    for im, p, s in reader:
         # set interval
-        reader.vid_stride = reader.fps * interval if reader.fps <= 100 else 25 * interval
+        reader.vid_stride = int((reader.fps if reader.fps <= 100 else 25) * interval)
         video_name = Path(Path(p).name).with_suffix("")
-        if img is None:
+        if im is None:
             continue
-        h, w = img.shape[:2]
-        total += 1
-        s += f" WxH:({w}x{h}) file:{video_name} current: {total}"
+        h, w = im.shape[:2]
+        s += f" WxH:({w}x{h})"
+        if max_size:
+            im = resize(im, max_size)
+            rh, rw = im.shape[:2]
+            s += f" resized WxH:({rw}x{rh})"
+        s += f" file:{video_name} current: {total}"
         im_name = f"{video_name}_{str(reader.frame).zfill(6)}_{tail}.jpg"
-        cv2.imwrite(os.path.join(save_dir, im_name), img)
+        cv2.imwrite(os.path.join(save_dir, im_name), im)
+        total += 1
         print(s)
 
 if __name__ == "__main__":

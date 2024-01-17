@@ -112,3 +112,23 @@ def generate_fog(img):
     m = m ** 2 if exp == 2 else m
     img = (img * m[:, None, None] + fog[..., None] * (1 - m[:, None, None])).astype(np.uint8)
     return img
+
+
+def resize(im, max_size, scaleup=False):
+    """Resize image to max size while keeping aspect ratio.
+
+    Args:
+        im (np.ndarray): The original image.
+        max_size (int): Max size of the shape.
+        scaleup (bool): Whether to resize up image if the original shape is small than the max_size.
+            default: False.
+    Returns:
+        The resized image with max_size.
+    """
+    shape = im.shape[:2]
+    r = min(max_size / shape[0], max_size / shape[1])
+    if (r >= 1.0) and not scaleup:
+        return im
+    new_shape = int(round(shape[1] * r)), int(round(shape[0] * r)) # w, h
+    im = cv2.resize(im, new_shape)
+    return im
