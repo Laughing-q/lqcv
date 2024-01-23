@@ -90,6 +90,7 @@ class Streams:
             cv2.destroyAllWindows()
             raise StopIteration
 
+        time.sleep(1 / min(self.fps))
         img0 = self.imgs.copy()
 
         # list
