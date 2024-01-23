@@ -8,15 +8,27 @@ from .utils import IMG_FORMATS, VID_FORMATS
 
 
 class Streams:
-    """Read Streams, modified from yolov5, support multi streams reading, but support one streams saving for now."""
+    """Read Streams, modified from yolov5, support multi streams reading, but support one streams saving for now.
 
-    def __init__(self, sources="streams.txt"):
+    Args:
+        sources (str | list): Rtsp addresss or a file contains rtsp addresses.
+        vid_stride (int | optional): Video stride.
+        imgsz (tuple | optional): Image size, (height, width)
+        im_only (bool | optional): Whether to return image only, or it'll return
+            image, path and description.
+    """
+
+    def __init__(self, sources="streams.txt", vid_stride=1, imgsz=None, im_only=False):
         self.mode = "stream"
+        self.vid_stride = vid_stride
+        self.imgsz = imgsz
+        self.im_only = im_only
+        self.running = True  # running flag for Thread
 
-        if osp.isfile(sources):
+        if isinstance(sources, str) and osp.isfile(sources):
             with open(sources, "r") as f:
                 sources = [x.strip() for x in f.read().strip().splitlines() if len(x.strip())]
-        else:
+        elif isinstance(sources, str):
             sources = [sources]
 
         n = len(sources)
@@ -27,40 +39,40 @@ class Streams:
             [0] * n,
             [None] * n,
         )
-        self.sources = sources  # clean source names for later
+        self.caps = [None] * n  # video capture objects
+        self.sources = sources
+
         for i, s in enumerate(sources):  # index, source
             # Start thread to read frames from video stream
             print(f"{i + 1}/{n}: {s}... ", end="")
             s = eval(s) if s.isnumeric() else s  # i.e. s = '0' local webcam
-            cap = cv2.VideoCapture(s)
-            assert cap.isOpened(), f"Failed to open {s}"
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.fps[i] = max(cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
-            self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float(
+            self.caps[i] = cv2.VideoCapture(s)  # store video capture object
+            assert self.caps[i].isOpened(), f"Failed to open {s}"
+            w = int(self.caps[i].get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(self.caps[i].get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.fps[i] = max(self.caps[i].get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
+            self.frames[i] = max(int(self.caps[i].get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float(
                 "inf"
             )  # infinite stream fallback
 
-            _, self.imgs[i] = cap.read()  # guarantee first frame
-            self.threads[i] = Thread(target=self.update, args=([i, cap, s]), daemon=True)
+            _, self.imgs[i] = self.caps[i].read()  # guarantee first frame
+            self.threads[i] = Thread(target=self.update, args=([i, self.caps[i], s]), daemon=True)
             print(f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
         print("")  # newline
 
     def update(self, i, cap, stream):
         # Read stream `i` frames in daemon thread
-        n, f, read = (
-            0,
-            self.frames[i],
-            1,
-        )  # frame number, frame array, inference every 'read' frame
-        while cap.isOpened() and n < f:
+        n, f = 0, self.frames[i]
+        while self.running and cap.isOpened() and n < f:
             n += 1
-            # _, self.imgs[index] = cap.read()
             cap.grab()
-            if n % read == 0:
+            if n % self.vid_stride == 0:
                 success, im = cap.retrieve()
                 if success:
+                    if self.imgsz:
+                        h, w = self.imgsz
+                        im = cv2.resize(im, (w, h))
                     self.imgs[i] = im
                 else:
                     print("WARNING: Video stream unresponsive, please check your IP camera connection.")
@@ -81,7 +93,20 @@ class Streams:
         img0 = self.imgs.copy()
 
         # list
-        return img0, self.sources, " "
+        return img0 if self.im_only else (img0, self.sources, " ")
+
+    def close(self):
+        """Close stream loader and release resources."""
+        self.running = False  # stop flag for Thread
+        for thread in self.threads:
+            if thread.is_alive():
+                thread.join(timeout=5)  # Add timeout
+        for cap in self.caps:  # Iterate through the stored VideoCapture objects
+            try:
+                cap.release()  # release video capture
+            except Exception as e:
+                print(f"WARNING ⚠️ Could not release VideoCapture object: {e}")
+        cv2.destroyAllWindows()
 
     def __len__(self):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
@@ -235,7 +260,7 @@ class ReadVideosAndImages:
                 self.cap.grab()
             success, img0 = self.cap.retrieve()
             if self.frame >= self.frames:
-            # if not success:
+                # if not success:
                 self.count += 1
                 self.cap.release()
                 if self.count == self.nf:  # last video
@@ -288,7 +313,9 @@ class ReadVideosAndImages:
                     self.vid_writer.release()  # release previous video writer
                 w = width or int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = height or int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                self.vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h))
+                self.vid_writer = cv2.VideoWriter(
+                    save_path, cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (w, h)
+                )
             self.vid_writer.write(image)
 
     def __len__(self):
@@ -297,6 +324,7 @@ class ReadVideosAndImages:
 
 class Images(ReadVideosAndImages):
     """Read Images."""
+
     def __init__(self, source: str, imgsz=None, im_only=False, shuffle=False):
         """Images
 
@@ -305,7 +333,7 @@ class Images(ReadVideosAndImages):
             imgsz (tuple | optional): Image size, (height, width)
             im_only (bool | optional): Whether to return image only, or it'll return
                 image, path and description.
-            shuffle (bool): Whether to shuffle images, this option could be useful 
+            shuffle (bool): Whether to shuffle images, this option could be useful
                 when randomly checking a part of the whole images.
         """
         p = str(Path(source).resolve())  # os-agnostic absolute path
@@ -321,6 +349,7 @@ class Images(ReadVideosAndImages):
         images = [x for x in files if x.split(".")[-1].lower() in IMG_FORMATS]
         if shuffle:
             import random
+
             random.shuffle(images)
         ni = len(images)
 
@@ -331,13 +360,13 @@ class Images(ReadVideosAndImages):
         self.imgsz = imgsz
         self.im_only = im_only
         assert self.nf > 0, (
-            f"No images or videos found in {p}. "
-            f"Supported formats are:\nimages: {IMG_FORMATS}"
+            f"No images or videos found in {p}. " f"Supported formats are:\nimages: {IMG_FORMATS}"
         )
 
 
 class Videos(ReadVideosAndImages):
     """Read Videos."""
+
     def __init__(self, source: str, vid_stride=1, imgsz=None, im_only=False):
         """Images
 
@@ -376,6 +405,7 @@ class Videos(ReadVideosAndImages):
             f"Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}"
         )
 
+
 # NOTE: keep this function to backward compatibility
 def create_reader(source: str):
     """This is for data(video, webcam, image, image_path) reading in inference.
@@ -389,4 +419,3 @@ def create_reader(source: str):
     is_url = source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
     webcam = source.isnumeric() or source.endswith(".txt") or (is_url and not is_file)
     return Stream(source) if webcam else ReadVideosAndImages(source), webcam
-
