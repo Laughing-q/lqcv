@@ -5,21 +5,13 @@ import numpy as np
 def stack(arrays, dim=0):
     """stack arrays for both torch and numpy types."""
     assert isinstance(arrays, (list, tuple))
-    return (
-        torch.stack(arrays, dim=dim)
-        if isinstance(arrays[0], torch.Tensor)
-        else np.stack(arrays, axis=dim)
-    )
+    return torch.stack(arrays, dim=dim) if isinstance(arrays[0], torch.Tensor) else np.stack(arrays, axis=dim)
 
 
 def cat(arrays, dim=0):
     """cat arrays for both torch and numpy types."""
     assert isinstance(arrays, (list, tuple))
-    return (
-        torch.cat(arrays, dim=dim)
-        if isinstance(arrays[0], torch.Tensor)
-        else np.concatenate(arrays, axis=dim)
-    )
+    return torch.cat(arrays, dim=dim) if isinstance(arrays[0], torch.Tensor) else np.concatenate(arrays, axis=dim)
 
 
 def clip_coords(boxes, shape):
@@ -121,9 +113,7 @@ def nms_numpy(boxes, scores, cls, threshold, method=None, agnostic=False):
     if len(cls.shape) == 1:
         cls = cls[:, None]
 
-    assert (
-        boxes.shape[0] == cls.shape[0] == scores.shape[0]
-    ), f"boxes, class_id and scores shapes must be equal"
+    assert boxes.shape[0] == cls.shape[0] == scores.shape[0], f"boxes, class_id and scores shapes must be equal"
 
     c = cls * (0 if agnostic else max_wh)
     boxes = boxes + c
@@ -161,3 +151,37 @@ def nms_numpy(boxes, scores, cls, threshold, method=None, agnostic=False):
 
     pick = pick[:counter].copy()
     return pick
+
+
+def bbox_iou(box1, box2, ioa=False, eps=1e-7):
+    """
+    Calculate the intersection over box2 area given box1 and box2. Boxes are in x1y1x2y2 format.
+
+    Args:
+        box1 (np.array): A numpy array of shape (n, 4) representing n bounding boxes.
+        box2 (np.array): A numpy array of shape (m, 4) representing m bounding boxes.
+        ioa (bool): Calculate inter_area/box2_area if True else return standard iou.
+        eps (float, optional): A small value to avoid division by zero. Defaults to 1e-7.
+
+    Returns:
+        (np.array): A numpy array of shape (n, m) representing the intersection over box2 area.
+    """
+
+    # Get the coordinates of bounding boxes
+    b1_x1, b1_y1, b1_x2, b1_y2 = box1.T
+    b2_x1, b2_y1, b2_x2, b2_y2 = box2.T
+
+    # Intersection area
+    inter_area = (np.minimum(b1_x2[:, None], b2_x2) - np.maximum(b1_x1[:, None], b2_x1)).clip(0) * (
+        np.minimum(b1_y2[:, None], b2_y2) - np.maximum(b1_y1[:, None], b2_y1)
+    ).clip(0)
+
+    # Box2 area
+    box2_area = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
+    if ioa:
+        # Intersection over box2 area
+        return inter_area / (box2_area + eps)
+    box1_area = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
+    area = box2_area + box1_area[:, None] - inter_area
+
+    return inter_area / (area + eps)

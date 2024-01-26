@@ -14,9 +14,7 @@ class Boxes:
     """
 
     def __init__(self, boxes, format="xyxy"):
-        assert (
-            format in _formats
-        ), f"Invalid bounding box format: {format}, format must be one of {_formats}"
+        assert format in _formats, f"Invalid bounding box format: {format}, format must be one of {_formats}"
         boxes = boxes[None, :] if boxes.ndim == 1 else boxes
         assert boxes.ndim == 2
         assert boxes.shape[1] == 4
@@ -26,29 +24,15 @@ class Boxes:
 
     def convert(self, format):
         """Converts bounding box format from one type to another."""
-        assert (
-            format in _formats
-        ), f"Invalid bounding box format: {format}, format must be one of {_formats}"
+        assert format in _formats, f"Invalid bounding box format: {format}, format must be one of {_formats}"
         if self.format == format:
             return
         elif self.format == "xyxy":
-            boxes = (
-                ops.xyxy2xywh(self._boxes)
-                if format == "xywh"
-                else ops.xyxy2ltwh(self._boxes)
-            )
+            boxes = ops.xyxy2xywh(self._boxes) if format == "xywh" else ops.xyxy2ltwh(self._boxes)
         elif self.format == "xywh":
-            boxes = (
-                ops.xywh2xyxy(self._boxes)
-                if format == "xyxy"
-                else ops.xywh2ltwh(self._boxes)
-            )
+            boxes = ops.xywh2xyxy(self._boxes) if format == "xyxy" else ops.xywh2ltwh(self._boxes)
         else:
-            boxes = (
-                ops.ltwh2xyxy(self._boxes)
-                if format == "xyxy"
-                else ops.ltwh2xywh(self._boxes)
-            )
+            boxes = ops.ltwh2xyxy(self._boxes) if format == "xyxy" else ops.ltwh2xywh(self._boxes)
         self._boxes = boxes
         self.format = format
 
@@ -103,9 +87,7 @@ class Boxes:
         format = self.format
         if format != "xyxy":
             self.convert("xyxy")
-        areas = (self._boxes[:, 2] - self._boxes[:, 0]) * (
-            self._boxes[:, 3] - self._boxes[:, 1]
-        )
+        areas = (self._boxes[:, 2] - self._boxes[:, 0]) * (self._boxes[:, 3] - self._boxes[:, 1])
         # convert back to the original format
         if format != "xyxy":
             self.convert(format)
@@ -145,9 +127,7 @@ class Boxes:
                     coords.append(self.rb)
                 else:
                     coords.append(self.center)
-            coordinates = (
-                coords[0][None, :, :] if len(coords) == 1 else ops.stack(coords, 0)
-            )
+            coordinates = coords[0][None, :, :] if len(coords) == 1 else ops.stack(coords, 0)
         if frame is not None:
             import cv2
 
@@ -159,7 +139,7 @@ class Boxes:
     def __len__(self):
         return len(self._boxes)
 
-    def __getitem__(self, index) -> 'Boxes':
+    def __getitem__(self, index) -> "Boxes":
         """
         Retrieve a specific bounding box or a set of bounding boxes using indexing.
 
@@ -184,3 +164,19 @@ class Boxes:
     def data(self):
         """The original data."""
         return self._boxes
+
+    @classmethod
+    def iou(cls, box1, box2):
+        """Calculate iou.
+
+        Args:
+            box1 (np.ndarray | Boxes): The box with shape (n, 4).
+            box2 (np.ndarray | Boxes): The box with shape (m, 4).
+        Returns:
+            np.ndarray, with shape (n, m).
+        """
+        if isinstance(box1, Boxes) and isinstance(box2, Boxes):
+            box1.convert("xyxy")
+            box2.convert("xyxy")
+            return ops.bbox_iou(box1.data, box2.data)
+        return ops.bbox_iou(box1, box2)

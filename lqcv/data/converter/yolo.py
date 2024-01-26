@@ -18,7 +18,7 @@ class YOLOConverter(BaseConverter):
 
         Args:
             label_dir (str): The directory of .txt labels.
-            class_names (str): Class names.
+            class_names (List[str]): Class names.
             img_dir (str | optional): Image directory,
                 if it's None then assume the structure is like the following example:
                     root/

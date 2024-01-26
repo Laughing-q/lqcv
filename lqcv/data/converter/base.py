@@ -1,10 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from lqcv.utils.log import LOGGER
+from lqcv.bbox import Boxes
 from collections import defaultdict
 from tqdm import tqdm
 from pathlib import Path
 from tabulate import tabulate
 import os.path as osp
+import numpy as np
 import os
 import cv2
 import shutil
@@ -209,11 +211,50 @@ class BaseConverter(metaclass=ABCMeta):
         LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
 
 
+    def check(self, iou_thres=0.7, min_pixel=5, filter=False):
+        """Check dataset.
+
+        Args:
+            iou_thres (float): The iou threshold.
+            min_pixel (int): The minimal pixel for width and height.
+            filter (bool): Whether to filter these boxes that is too small or overlaps too much.
+        """
+        assert len(self.labels), "Checking process needs labels, No labels detected!"
+        pbar = tqdm(self.labels, total=len(self.labels))
+        pbar.desc = f"Checking dataset: "
+        for label in pbar:
+            label["sign"] = {}
+            filename = label["img_name"]
+            bboxes = label["bbox"]
+            bboxes.convert("xywh")
+            # Init pick indices
+            pixel_pick = iou_pick = np.ones(len(bboxes), dtype=bool)
+            pixel_idx = np.nonzero((bboxes.data[:, 2:] < min_pixel).any(1))[0]
+            if len(pixel_idx):
+                LOGGER.warning(f"WARNING ⚠️{filename} got boxes with width or height less than {min_pixel}!")
+                # NOTE: no need to keep indices if filter=True, as the indices would be incorrect anyway.
+                label["sign"]["pixel"] = pixel_idx if not filter else list(range(len(bboxes)))
+                pixel_pick = (bboxes.data[:, 2:] >= min_pixel).any(1)
+            iou = np.triu(Boxes.iou(bboxes, bboxes), k=1)
+            iou_idx = np.unique(np.concatenate(np.nonzero((iou > iou_thres))))
+            if len(iou_idx):
+                LOGGER.warning(f"WARNING ⚠️{filename} got boxes with overlaps greater than {iou_thres}!")
+                # NOTE: no need to keep indices if filter=True, as the indices would be incorrect anyway.
+                label["sign"]["overlap"] = iou_idx if not filter else list(range(len(bboxes)))
+                iou_pick = iou.max(axis=0) < iou_thres
+            if filter and (len(iou_idx) or len(pixel_idx)):
+                ori_len = len(bboxes)
+                pick = iou_pick & pixel_pick
+                label["bbox"] = bboxes[pick]
+                label["cls"] = [c for i, c in enumerate(label["cls"]) if pick[i]]
+                LOGGER.info(f"Filter results: {len(label['bbox'])}/{ori_len}")
+
+
     @abstractmethod
     def read_labels(self, label_dir):
         pass
 
-    def visualize(self, save_dir=None, classes=[], show_labels=True):
+    def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False):
         """Visualize labels.
 
         Args:
@@ -222,6 +263,9 @@ class BaseConverter(metaclass=ABCMeta):
             classes (List[int | str] | optional): To specify the classes to visualize, it's a list contains
                 the cls index or class name.
             show_labels (bool): Whether to show label names, default: True.
+            sign_only (bool): Only to plot the images with sign, 
+                only the invalid bboxes would be plotted in images with sign if labels are not filtered;
+                all the bboxes would be plotted in images with sign if labels are filtered;
         """
         if not osp.exists(self.img_dir):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
@@ -242,11 +286,14 @@ class BaseConverter(metaclass=ABCMeta):
         for label in pbar:
             plotted = False
             try:
+                sign = label.get("sign", {})
+                if sign_only and len(sign) == 0:
+                    continue
                 filename = label["img_name"]
                 image = cv2.imread(osp.join(self.img_dir, filename))
-                annotator = Annotator(image, line_width=2)
                 if image is None:
                     continue
+                annotator = Annotator(image, line_width=2)
                 cls = label["cls"]
                 bbox = label["bbox"]
                 if filter:
@@ -255,7 +302,14 @@ class BaseConverter(metaclass=ABCMeta):
                     bbox = bbox[idx]
                 bbox.convert("xyxy")
                 for i, c in enumerate(cls):
-                    annotator.box_label(bbox.data[i], self.class_names[int(c)] if show_labels else None, color=colors(int(c)))
+                    sign_info = ""
+                    for k, v in sign.items():
+                        if i in v:
+                            sign_info += f" {k}"
+                    if sign_only and len(sign_info) == 0:
+                        continue
+                    l = self.class_names[int(c)] + sign_info if show_labels else None
+                    annotator.box_label(bbox.data[i], l, color=colors(int(c)))
                     plotted = True
             except Exception as e:
                 LOGGER.warning(e)
