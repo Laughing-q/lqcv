@@ -234,14 +234,14 @@ class BaseConverter(metaclass=ABCMeta):
                 LOGGER.warning(f"WARNING ⚠️{filename} got boxes with width or height less than {min_pixel}!")
                 # NOTE: no need to keep indices if filter=True, as the indices would be incorrect anyway.
                 label["sign"]["pixel"] = pixel_idx if not filter else list(range(len(bboxes)))
-                pixel_pick = (bboxes.data[:, 2:] >= min_pixel).any(1)
+                pixel_pick = (bboxes.data[:, 2:] >= min_pixel).all(1)
             iou = np.triu(Boxes.iou(bboxes, bboxes), k=1)
             iou_idx = np.unique(np.concatenate(np.nonzero((iou > iou_thres))))
             if len(iou_idx):
                 LOGGER.warning(f"WARNING ⚠️{filename} got boxes with overlaps greater than {iou_thres}!")
                 # NOTE: no need to keep indices if filter=True, as the indices would be incorrect anyway.
                 label["sign"]["overlap"] = iou_idx if not filter else list(range(len(bboxes)))
-                iou_pick = iou.max(axis=0) < iou_thres
+                iou_pick = iou.max(axis=0) <= iou_thres
             if filter and (len(iou_idx) or len(pixel_idx)):
                 ori_len = len(bboxes)
                 pick = iou_pick & pixel_pick
