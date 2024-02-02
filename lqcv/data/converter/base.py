@@ -154,6 +154,7 @@ class BaseConverter(metaclass=ABCMeta):
     def toYOLO(self, 
                save_dir, 
                classes=None, 
+               classes_idx=None,
                im_dir=None,
                single_cls=False):
         """Convert labels to yolo format.
@@ -161,12 +162,14 @@ class BaseConverter(metaclass=ABCMeta):
         Args:
             save_dir (str): Save dir for the dst txt files.
             classes (Optional | List[str]): Filter the class if given.
+            classes_idx (Optional | List[int]): Update the class idx if given.
             im_dir (Optional | str): Move the images to im_dir if given and `classes` is also given.
             single_cls (Optional | bool): Whether to treat all the classes to one class, default: False.
         """
-        if self.format == "yolo" and classes is None:
-            LOGGER.info("Current format is YOLO! there's no need to convert it since `classes` is also `None`.")
+        if self.format == "yolo" and classes is None and classes_idx is None:
+            LOGGER.info("Current format is YOLO! there's no need to convert it since `classes` and `classes_idx` are not given.")
             return
+        assert not (classes is not None and classes_idx is not None), "`classes` and `classes_idx` are mutually exclusive."
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
@@ -194,6 +197,8 @@ class BaseConverter(metaclass=ABCMeta):
 
                 cx, cy, bw, bh = bboxes[i].data.squeeze().tolist()
                 category_id = 0 if single_cls else class_name.index(name)
+                if classes_idx is not None:
+                    category_id = classes_idx[category_id] 
                 cx /= w
                 cy /= h
                 bw /= w
