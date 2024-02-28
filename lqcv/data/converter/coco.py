@@ -52,9 +52,9 @@ class COCOConverter(BaseConverter):
             h, w, f = img['height'], img['width'], img['file_name']
             cls, bbox = [], []
             for ann in anns:
-                if ann['iscrowd']:  # ignore iscrowd
+                if ann.get('iscrowd', False):  # ignore iscrowd
                     continue
-                cls.append(self.coco_idx_map[ann["category_id"] - 1] if is_coco else ann["category_id"])
+                cls.append(self.coco_idx_map[ann["category_id"] - 1] if is_coco else ann["category_id"] - 1)
                 bbox.append(ann["bbox"])
             ne += (0 if len(cls) else 1)
             nf += (1 if len(cls) else 0)
