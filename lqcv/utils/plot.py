@@ -1,19 +1,19 @@
 import cv2
 
 LQCV_PAUSE=False
-def waitKey(delay=1):
+def waitKey(delay=1, pause=False):
     """A better waitKey that can pause video or image sequences."""
     global LQCV_PAUSE
     key = cv2.waitKey(0 if LQCV_PAUSE else delay)
-    LQCV_PAUSE = True if key == ord(' ') else False
+    LQCV_PAUSE = (True if key == ord(' ') else False) or pause
     return key
 
-def cv2_imshow(im, delay=0, wname="p", nwindow=False):
+def cv2_imshow(im, delay=0, wname="p", nwindow=False, pause=False):
     """A prepared cv2.imshow to reduce duplicate code."""
     if nwindow:
         cv2.namedWindow(wname, cv2.WINDOW_NORMAL)
     cv2.imshow(wname, im)
-    if waitKey(delay) == ord('q'):
+    if waitKey(delay, pause) == ord('q'):
         exit()
 
 
