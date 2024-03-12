@@ -50,7 +50,7 @@ class Boxes:
 
         if len(boxes_list) == 1:
             return boxes_list[0]
-        return cls(ops.cat([b.bboxes for b in boxes_list], dim=dim))
+        return cls(ops.cat([b.data for b in boxes_list], dim=dim))
 
     @property
     def lt(self):
@@ -96,6 +96,10 @@ class Boxes:
     @property
     def data(self):
         return self._boxes
+
+    @property
+    def shape(self):
+        return self._boxes.shape
 
     def get_coords(self, filter=None, frame=None):
         """Get the coordinates of self.boxes.
@@ -166,17 +170,18 @@ class Boxes:
         return self._boxes
 
     @classmethod
-    def iou(cls, box1, box2):
+    def iou(cls, box1, box2, ioa=False):
         """Calculate iou.
 
         Args:
             box1 (np.ndarray | Boxes): The box with shape (n, 4).
             box2 (np.ndarray | Boxes): The box with shape (m, 4).
+            ioa (bool): Calculate inter_area/box2_area if True else return standard iou.
         Returns:
             np.ndarray, with shape (n, m).
         """
         if isinstance(box1, Boxes) and isinstance(box2, Boxes):
             box1.convert("xyxy")
             box2.convert("xyxy")
-            return ops.bbox_iou(box1.data, box2.data)
-        return ops.bbox_iou(box1, box2)
+            return ops.bbox_iou(box1.data, box2.data, ioa=ioa)
+        return ops.bbox_iou(box1, box2, ioa=ioa)
