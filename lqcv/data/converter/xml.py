@@ -55,8 +55,8 @@ class XMLConverter(YOLOConverter):
                     assert (filename is not None), f"can't get `filename` info from {xml_file}"
                     filename = str(filename.text)
                     if filename != img_name:
-                        LOGGER.warning("[Filename] filename got different name from image name, "
-                                f"'{filename}' vs '{img_name}' using image name(the latter)!")
+                        # LOGGER.warning("[Filename] filename got different name from image name, "
+                        #         f"'{filename}' vs '{img_name}' using image name(the latter)!")
                         filename = img_name
                     try:
                         size = xml.find("size")
@@ -79,10 +79,10 @@ class XMLConverter(YOLOConverter):
                                     f"'{name}' not in {class_names} from {xml_file}"
                         cls.append(name)
                         box = obj.find("bndbox")
-                        x1 = float(box.find("xmin").text)
-                        x2 = float(box.find("xmax").text)
-                        y1 = float(box.find("ymin").text)
-                        y2 = float(box.find("ymax").text)
+                        x1 = min(max(0, float(box.find("xmin").text)), w)
+                        x2 = min(max(0, float(box.find("xmax").text)), w)
+                        y1 = min(max(0, float(box.find("ymin").text)), h)
+                        y2 = min(max(0, float(box.find("ymax").text)), h)
                         bbox.append([x1, y1, x2, y2])
                     bbox = np.array(bbox, dtype=np.float32)
                     assert (bbox >= 0).all(), f"negative labels: {xml_file}"
