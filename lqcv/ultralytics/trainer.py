@@ -9,7 +9,7 @@ class DetectionTrainer(detect.DetectionTrainer):
         super().__init__(overrides=overrides, _callbacks=_callbacks)
         # pass all extra_args to self.args
         # NOTE: For resume, exclude extra keys.
-        self.val_args = IterableSimpleNamespace(**{k: v for k, v in copy(self.args).items() if k not in extra_args})
+        self.val_args = IterableSimpleNamespace(**{k: v for k, v in vars(copy(self.args)).items() if k not in extra_args})
         for k, v in extra_args.items():
             self.args.__setattr__(k, v)
         # save the args again with extra_args
