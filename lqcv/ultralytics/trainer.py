@@ -47,7 +47,7 @@ class DetectionTrainer(detect.DetectionTrainer):
         )
 
 
-class PoseTrainer(DetectionTrainer, pose.PoseTrainer):
+class PoseTrainer(pose.PoseTrainer, DetectionTrainer):
     def __init__(self, overrides=None, _callbacks=None, extra_args={}):
         if overrides is None:
             overrides = {}
@@ -55,7 +55,7 @@ class PoseTrainer(DetectionTrainer, pose.PoseTrainer):
         DetectionTrainer.__init__(self, overrides=overrides, _callbacks=_callbacks, extra_args=extra_args)
 
 
-class SegmentationTrainer(DetectionTrainer, segment.SegmentationTrainer):
+class SegmentationTrainer(segment.SegmentationTrainer, DetectionTrainer):
     def __init__(self, overrides=None, _callbacks=None, extra_args={}):
         if overrides is None:
             overrides = {}
