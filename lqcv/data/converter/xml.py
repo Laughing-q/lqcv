@@ -32,6 +32,7 @@ class XMLConverter(YOLOConverter):
         # update class_names
         if self.class_names is None:
             self.class_names = list(self.catCount.keys()) 
+            LOGGER.warning("No class names provided, reading it automatically from xml files!")
         # update cls names cls indexs
         for l in self.labels:
             names = l.pop("cls")

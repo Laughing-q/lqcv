@@ -47,6 +47,9 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
     value = im_parent / f"{name}Value.txt"
     if not (filename.exists() and value.exists()):
         LOGGER.info("Can't find Name.txt or Value.txt! Creating automatically!")
+        if count_only == False:
+            LOGGER.info("Force to set `count_only=True` for the first time!")
+            count_only = True   # force to set count_only=True for the first time.
         _create_values(str(filename), str(value))
 
     im_names = os.listdir(img_dir)
@@ -55,6 +58,9 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
     values = np.loadtxt(str(value), dtype=np.uint8)
     if len(names) != len(values) or names != im_names:
         LOGGER.info("`names` is not matched! Creating new one automatically!")
+        if count_only == False:
+            LOGGER.info("Force to set `count_only=True` for the first time!")
+            count_only = True   # force to set count_only=True for the first time.
         _create_values(str(filename), str(value))
         # reload names and values
         with open(str(filename), "r") as f:
