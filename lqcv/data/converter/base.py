@@ -259,7 +259,7 @@ class BaseConverter(metaclass=ABCMeta):
     def read_labels(self, label_dir):
         pass
 
-    def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False):
+    def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False, shuffle=True):
         """Visualize labels.
 
         Args:
@@ -271,13 +271,16 @@ class BaseConverter(metaclass=ABCMeta):
             sign_only (bool): Only to plot the images with sign, 
                 only the invalid bboxes would be plotted in images with sign if labels are not filtered;
                 all the bboxes would be plotted in images with sign if labels are filtered;
+            shuffle (bool): Whether to shuffle the labels, this is for the use case of
+                randomly check images sometimes.
         """
         if not osp.exists(self.img_dir):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
             return
 
-        import random
-        random.shuffle(self.labels)
+        if shuffle:
+            import random
+            random.shuffle(self.labels)
         classes = [self.class_names.index(c) if isinstance(c, str) else c for c in classes]
         filter = len(classes)
 
