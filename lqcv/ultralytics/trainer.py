@@ -56,7 +56,7 @@ class PoseTrainer(DetectionTrainer, pose.PoseTrainer):
 
     def get_validator(self):
         """Returns a DetectionValidator for YOLO model validation."""
-        self.loss_names = "box_loss", "cls_loss", "dfl_loss"
+        self.loss_names = "box_loss", "pose_loss", "kobj_loss", "cls_loss", "dfl_loss"
         return pose.PoseValidator(
             self.test_loader, save_dir=self.save_dir, args=copy(self.val_args), _callbacks=self.callbacks
         )
@@ -71,7 +71,7 @@ class SegmentationTrainer(DetectionTrainer, segment.SegmentationTrainer):
 
     def get_validator(self):
         """Returns a DetectionValidator for YOLO model validation."""
-        self.loss_names = "box_loss", "cls_loss", "dfl_loss"
+        self.loss_names = "box_loss", "seg_loss", "cls_loss", "dfl_loss"
         return segment.SegmentationValidator(
             self.test_loader, save_dir=self.save_dir, args=copy(self.val_args), _callbacks=self.callbacks
         )
