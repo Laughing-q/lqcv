@@ -242,7 +242,7 @@ class BaseConverter(metaclass=ABCMeta):
                 iou_pick = iou.max(axis=0) <= iou_thres
 
                 paired_idx = np.stack(np.nonzero(iou > iou_thres), axis=1)
-                cls = np.array(label["cls"])
+                cls = np.array(label["cls"], dtype=np.int32)
                 for idx in paired_idx:
                     n1, n2 = (self.class_names[i] for i in cls[idx])
                     if f"{n2}--{n1}" in self.check_results["iou"]:
