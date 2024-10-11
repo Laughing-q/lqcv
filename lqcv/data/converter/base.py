@@ -13,7 +13,6 @@ import shutil
 import json
 
 
-
 class BaseConverter(metaclass=ABCMeta):
     def __init__(self, label_dir, class_names=None, img_dir=None) -> None:
         super().__init__()
@@ -27,10 +26,7 @@ class BaseConverter(metaclass=ABCMeta):
 
         self.read_labels(label_dir)
 
-    def toCOCO(self, 
-               save_file, 
-               classes=None, 
-               im_dir=None):
+    def toCOCO(self, save_file, classes=None, im_dir=None):
         """Convert labels to coco format.
 
         Args:
@@ -53,11 +49,11 @@ class BaseConverter(metaclass=ABCMeta):
         for idx, label in pbar:
             h, w = label["shape"][:2]
             image, sub_annotations = dict(), []
-            image['file_name'] = label["img_name"]
+            image["file_name"] = label["img_name"]
 
-            image['height'] = h
-            image['width'] = w
-            image['id'] = idx
+            image["height"] = h
+            image["width"] = w
+            image["id"] = idx
 
             cls, bboxes = label["cls"], label["bbox"]
             bboxes.convert("ltwh")
@@ -91,8 +87,9 @@ class BaseConverter(metaclass=ABCMeta):
 
         cocoDict["images"] = images
         cocoDict["annotations"] = annotations
-        cocoDict["categories"] = [{"supercategory": "none", "id": c, 
-                                   "name": class_name[c]} for c in range(len(class_name))]
+        cocoDict["categories"] = [
+            {"supercategory": "none", "id": c, "name": class_name[c]} for c in range(len(class_name))
+        ]
         cocoDict["type"] = "instances"
 
         # print attrDict
@@ -103,10 +100,7 @@ class BaseConverter(metaclass=ABCMeta):
 
         LOGGER.info(f"Convert results: {len(images)}/{len(self.labels)}")
 
-    def toXML(self, 
-               save_dir, 
-               classes=None, 
-               im_dir=None):
+    def toXML(self, save_dir, classes=None, im_dir=None):
         """Convert labels to xml format.
 
         Args:
@@ -130,8 +124,8 @@ class BaseConverter(metaclass=ABCMeta):
             bboxes.convert("xyxy")
             filename = label["img_name"]
 
-            obj_str = ''
-            xml_name = str(Path(filename).with_suffix('.xml'))
+            obj_str = ""
+            xml_name = str(Path(filename).with_suffix(".xml"))
             xml_path = osp.join(save_dir, xml_name)
             for i, c in enumerate(cls):
                 name = self.class_names[int(c)]
@@ -143,7 +137,7 @@ class BaseConverter(metaclass=ABCMeta):
                 bbox = bboxes[i].data.squeeze().tolist()
                 obj_str += obj_temp % (name, *bbox)
             if len(obj_str):
-                f_xml = open(xml_path, 'w')
+                f_xml = open(xml_path, "w")
                 f_xml.write(anno_temp % (filename, w, h, c, obj_str))
                 f_xml.close()
                 if copy_im:
@@ -151,12 +145,7 @@ class BaseConverter(metaclass=ABCMeta):
 
         LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
 
-    def toYOLO(self, 
-               save_dir, 
-               classes=None, 
-               classes_idx=None,
-               im_dir=None,
-               single_cls=False):
+    def toYOLO(self, save_dir, classes=None, classes_idx=None, im_dir=None, single_cls=False):
         """Convert labels to yolo format.
 
         Args:
@@ -167,9 +156,13 @@ class BaseConverter(metaclass=ABCMeta):
             single_cls (Optional | bool): Whether to treat all the classes to one class, default: False.
         """
         if self.format == "yolo" and classes is None and classes_idx is None:
-            LOGGER.info("Current format is YOLO! there's no need to convert it since `classes` and `classes_idx` are not given.")
+            LOGGER.info(
+                "Current format is YOLO! there's no need to convert it since `classes` and `classes_idx` are not given."
+            )
             return
-        assert not (classes is not None and classes_idx is not None), "`classes` and `classes_idx` are mutually exclusive."
+        assert not (
+            classes is not None and classes_idx is not None
+        ), "`classes` and `classes_idx` are mutually exclusive."
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
@@ -184,7 +177,7 @@ class BaseConverter(metaclass=ABCMeta):
             bboxes.convert("xywh")
             filename = label["img_name"]
 
-            label_name = str(Path(filename).with_suffix('.txt'))
+            label_name = str(Path(filename).with_suffix(".txt"))
             label_path = osp.join(save_dir, label_name)
 
             label = ""
@@ -198,7 +191,7 @@ class BaseConverter(metaclass=ABCMeta):
                 cx, cy, bw, bh = bboxes[i].data.squeeze().tolist()
                 category_id = 0 if single_cls else class_name.index(name)
                 if classes_idx is not None:
-                    category_id = classes_idx[category_id] 
+                    category_id = classes_idx[category_id]
                 cx /= w
                 cy /= h
                 bw /= w
@@ -207,14 +200,13 @@ class BaseConverter(metaclass=ABCMeta):
                 label += "%s %s %s %s %s\n" % (category_id, cx, cy, bw, bh)
 
             if len(label):
-                f_label = open(label_path, 'w')
+                f_label = open(label_path, "w")
                 f_label.write(label)
                 f_label.close()
                 if copy_im:
                     shutil.copy(osp.join(self.img_dir, filename), im_dir)
 
         LOGGER.info(f"Convert results: {len(os.listdir(save_dir))}/{len(self.labels)}")
-
 
     def check(self, iou_thres=0.7, min_pixel=5, filter=False):
         """Check dataset.
@@ -225,6 +217,7 @@ class BaseConverter(metaclass=ABCMeta):
             filter (bool): Whether to filter these boxes that is too small or overlaps too much.
         """
         assert len(self.labels), "Checking process needs labels, No labels detected!"
+        self.check_results = {"pixel": defaultdict(int), "iou": defaultdict(int)}
         pbar = tqdm(self.labels, total=len(self.labels))
         pbar.desc = f"Checking dataset: "
         for label in pbar:
@@ -247,13 +240,21 @@ class BaseConverter(metaclass=ABCMeta):
                 # NOTE: no need to keep indices if filter=True, as the indices would be incorrect anyway.
                 label["sign"]["overlap"] = iou_idx if not filter else list(range(len(bboxes)))
                 iou_pick = iou.max(axis=0) <= iou_thres
+
+                paired_idx = np.stack(np.nonzero(iou > iou_thres), axis=1)
+                cls = np.array(label["cls"])
+                for idx in paired_idx:
+                    n1, n2 = (self.class_names[i] for i in cls[idx])
+                    if f"{n2}--{n1}" in self.check_results["iou"]:
+                        self.check_results["iou"][f"{n2}--{n1}"] += 1
+                    else:
+                        self.check_results["iou"][f"{n1}--{n2}"] += 1
             if filter and (len(iou_idx) or len(pixel_idx)):
                 ori_len = len(bboxes)
                 pick = iou_pick & pixel_pick
                 label["bbox"] = bboxes[pick]
                 label["cls"] = [c for i, c in enumerate(label["cls"]) if pick[i]]
                 LOGGER.info(f"Filter results: {len(label['bbox'])}/{ori_len}")
-
 
     @abstractmethod
     def read_labels(self, label_dir):
@@ -263,12 +264,12 @@ class BaseConverter(metaclass=ABCMeta):
         """Visualize labels.
 
         Args:
-            save_dir (str | optional): The path to save visualized images, 
+            save_dir (str | optional): The path to save visualized images,
                 if it's None then just show the images.
             classes (List[int | str] | optional): To specify the classes to visualize, it's a list contains
                 the cls index or class name.
             show_labels (bool): Whether to show label names, default: True.
-            sign_only (bool): Only to plot the images with sign, 
+            sign_only (bool): Only to plot the images with sign,
                 only the invalid bboxes would be plotted in images with sign if labels are not filtered;
                 all the bboxes would be plotted in images with sign if labels are filtered;
             shuffle (bool): Whether to shuffle the labels, this is for the use case of
@@ -280,6 +281,7 @@ class BaseConverter(metaclass=ABCMeta):
 
         if shuffle:
             import random
+
             random.shuffle(self.labels)
         classes = [self.class_names.index(c) if isinstance(c, str) else c for c in classes]
         filter = len(classes)
@@ -291,6 +293,7 @@ class BaseConverter(metaclass=ABCMeta):
             cv2.namedWindow("p", cv2.WINDOW_NORMAL)
 
         from ultralytics.utils.plotting import Annotator, colors
+
         for label in pbar:
             plotted = False
             try:
@@ -391,4 +394,3 @@ class BaseConverter(metaclass=ABCMeta):
             tablefmt="fancy_grid",
             missingval="None",
         )
-
