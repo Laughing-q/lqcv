@@ -245,10 +245,10 @@ class BaseConverter(metaclass=ABCMeta):
                 cls = np.array(label["cls"], dtype=np.int32)
                 for idx in paired_idx:
                     n1, n2 = (self.class_names[i] for i in cls[idx])
-                    if f"{n2}--{n1}" in self.check_results["iou"]:
-                        self.check_results["iou"][f"{n2}--{n1}"] += 1
+                    if (n2, n1) in self.check_results["iou"]:
+                        self.check_results["iou"][(n2, n1)] += 1
                     else:
-                        self.check_results["iou"][f"{n1}--{n2}"] += 1
+                        self.check_results["iou"][(n1, n2)] += 1
             if filter and (len(iou_idx) or len(pixel_idx)):
                 ori_len = len(bboxes)
                 pick = iou_pick & pixel_pick
