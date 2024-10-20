@@ -10,7 +10,7 @@ import cv2
 
 
 class XMLConverter(YOLOConverter):
-    def __init__(self, label_dir, class_names=None, img_dir=None) -> None:
+    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None) -> None:
         """XMLConverter.
 
         Args:
@@ -24,11 +24,11 @@ class XMLConverter(YOLOConverter):
         """
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
-        super().__init__(label_dir, class_names, img_dir)
+        super().__init__(label_dir, class_names, img_dir, chunk_size)
         self.format = 'xml'
 
-    def read_labels(self, label_dir):
-        super().read_labels(label_dir)
+    def read_labels(self, label_dir, chunk_size=None):
+        super().read_labels(label_dir, chunk_size)
         # update class_names
         if self.class_names is None:
             self.class_names = list(self.catCount.keys()) 

@@ -13,7 +13,7 @@ import cv2
 
 
 class YOLOConverter(BaseConverter):
-    def __init__(self, label_dir, class_names, img_dir=None) -> None:
+    def __init__(self, label_dir, class_names, img_dir=None, chunk_size=None) -> None:
         """YOLOConverter.
 
         Args:
@@ -28,48 +28,61 @@ class YOLOConverter(BaseConverter):
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
         assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
-        super().__init__(label_dir, class_names, img_dir)
-        self.format = 'yolo'
+        super().__init__(label_dir, class_names, img_dir, chunk_size)
+        self.format = "yolo"
 
-    def read_labels(self, label_dir):
+    def read_labels(self, label_dir, chunk_size=None):
+        """Read labels.
+
+        Args:
+            label_dir (str):
+            chunk_size (int, optional):
+        """
         LOGGER.info(f"Read labels from {label_dir}...")
 
         catImg = defaultdict(list)
         img_names = os.listdir(self.img_dir)
-        ni = len(img_names)
-        nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
-        desc = f"Scanning '{label_dir}' images and labels..."
-        with Pool() as pool:
-            pbar = tqdm(
-                pool.imap_unordered(
-                    self.verify_label,
-                    zip(
-                        img_names,
-                        [self.img_dir] * ni,
-                        [label_dir] * ni,
-                        [self.class_names] * ni,
+        img_names = (
+            [img_names[i : i + chunk_size] for i in range(0, len(img_names), chunk_size)]
+            if chunk_size != None
+            else [img_names]
+        )
+
+        for im_names in img_names:
+            ni = len(im_names)
+            nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
+            desc = f"Scanning '{label_dir}' images and labels..."
+            with Pool() as pool:
+                pbar = tqdm(
+                    pool.imap_unordered(
+                        self.verify_label,
+                        zip(
+                            im_names,
+                            [self.img_dir] * ni,
+                            [label_dir] * ni,
+                            [self.class_names] * ni,
+                        ),
                     ),
-                ),
-                desc=desc,
-                total=len(img_names),
-            )
-            for img_name, cls, bbox, shape, nm_f, nf_f, ne_f, nc_f, msg in pbar:
-                nm += nm_f
-                nf += nf_f
-                ne += ne_f
-                nc += nc_f
-                if img_name:
-                    self.labels.append(dict(img_name=img_name, shape=shape, cls=cls, bbox=bbox))
-                    for c in cls:
-                        name = c if isinstance(c, str) else self.class_names[int(c)]
-                        self.catCount[name] += 1
-                        if img_name not in catImg[name]:
-                            catImg[name].append(img_name)
-                # TODO: self.errors
-                if msg:
-                    LOGGER.warning(msg)
-                    msgs.append(msg)
-                pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
+                    desc=desc,
+                    total=len(im_names),
+                )
+                for img_name, cls, bbox, shape, nm_f, nf_f, ne_f, nc_f, msg in pbar:
+                    nm += nm_f
+                    nf += nf_f
+                    ne += ne_f
+                    nc += nc_f
+                    if img_name:
+                        self.labels.append(dict(img_name=img_name, shape=shape, cls=cls, bbox=bbox))
+                        for c in cls:
+                            name = c if isinstance(c, str) else self.class_names[int(c)]
+                            self.catCount[name] += 1
+                            if img_name not in catImg[name]:
+                                catImg[name].append(img_name)
+                    # TODO: self.errors
+                    if msg:
+                        LOGGER.warning(msg)
+                        msgs.append(msg)
+                    pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
         # update catImgCnt
         for name, imgCnt in catImg.items():
             self.catImgCnt[name] = len(imgCnt)
@@ -98,17 +111,13 @@ class YOLOConverter(BaseConverter):
                 if len(l):
                     assert l.shape[1] == 5, f"labels require 5 columns each: {lb_file}"
                     assert (l >= 0).all(), f"negative labels: {lb_file}"
-                    assert (
-                        l[:, 1:] <= 1
-                    ).all(), f"non-normalized or out of bounds coordinate labels: {lb_file}"
+                    assert (l[:, 1:] <= 1).all(), f"non-normalized or out of bounds coordinate labels: {lb_file}"
                     _, i = np.unique(l, axis=0, return_index=True)
                     if len(i) < nl:  # duplicate row check
                         l = l[i]  # remove duplicates
-                        msg = f'WARNING ⚠️ {im_file}: {nl - len(i)} duplicate labels removed'
+                        msg = f"WARNING ⚠️ {im_file}: {nl - len(i)} duplicate labels removed"
                     assert np.unique(l, axis=0).shape[0] == l.shape[0], "duplicate labels"
-                    assert (
-                        l[:, 0] < len(class_names)
-                    ).all(), f"label cls index out of range, {l[:, 0]}, {lb_file}"
+                    assert (l[:, 0] < len(class_names)).all(), f"label cls index out of range, {l[:, 0]}, {lb_file}"
                 else:
                     ne = 1  # label empty
                     l = np.zeros((0, 5), dtype=np.float32)
