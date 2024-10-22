@@ -20,7 +20,7 @@ def find_extra_names(more_dir, less_dir, reverse=False, pure=False):
         return_names (list): The names of these files, without suffix if pure=True.
     """
     more_names = os.listdir(more_dir)
-    less_names = [os.path.splitext(i)[0] for i in os.listdir(less_dir)]
+    less_names = set([os.path.splitext(i)[0] for i in os.listdir(less_dir)])
     return_names = []
     for n in tqdm.tqdm(more_names, total=len(more_names)):
         name = os.path.splitext(n)[0]
