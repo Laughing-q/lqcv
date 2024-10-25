@@ -29,7 +29,7 @@ class YOLOConverter(BaseConverter):
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
         if self.__class__.__name__ == "YOLOConverter":   # Do not affect XMLConverter
-            assert osp.exists(self.img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
+            assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir, chunk_size)
         self.format = "yolo"
 
