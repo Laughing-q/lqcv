@@ -1,3 +1,4 @@
+from ultralytics.utils.ops import segments2boxes
 from lqcv.bbox import Boxes
 from .base import BaseConverter
 from lqcv.utils.log import LOGGER
@@ -27,6 +28,8 @@ class YOLOConverter(BaseConverter):
         """
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
+        if self.__class__.__name__ == "YOLOConverter":   # Do not affect XMLConverter
+            assert osp.exists(self.img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir, chunk_size)
         self.format = "yolo"
 
@@ -87,9 +90,7 @@ class YOLOConverter(BaseConverter):
             self.catImgCnt[name] = len(imgCnt)
 
     @classmethod
-    def verify_label(cls, args):
-        # NOTE: put the assert here so it won't affect the XMLConverter
-        assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
+    def verify_label(self, args):
         # Verify one image-label pair
         img_name, img_dir, labels_dir, class_names = args
         im_file = osp.join(img_dir, img_name)
@@ -105,9 +106,13 @@ class YOLOConverter(BaseConverter):
             # verify labels
             if os.path.isfile(lb_file):
                 nf = 1  # label found
-                with open(lb_file, "r") as f:
+                with open(lb_file) as f:
                     l = [x.split() for x in f.read().strip().splitlines() if len(x)]
-                    l = np.array(l, dtype=np.float32)
+                    if any(len(x) > 6 for x in l):  # is segment
+                        classes = np.array([x[0] for x in l], dtype=np.float32)
+                        segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]  # (cls, xy1...)
+                        l = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)  # (cls, xywh)
+                l = np.array(l, dtype=np.float32)
                 nl = len(l)
                 if len(l):
                     assert l.shape[1] == 5, f"labels require 5 columns each: {lb_file}"
