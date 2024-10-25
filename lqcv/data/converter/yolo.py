@@ -27,7 +27,6 @@ class YOLOConverter(BaseConverter):
         """
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
-        assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir, chunk_size)
         self.format = "yolo"
 
@@ -41,7 +40,7 @@ class YOLOConverter(BaseConverter):
         LOGGER.info(f"Read labels from {label_dir}...")
 
         catImg = defaultdict(list)
-        img_names = os.listdir(self.img_dir)
+        img_names = os.listdir(label_dir if self.img_dir is None or not Path(self.img_dir).exists() else self.img_dir)
         img_names = (
             [img_names[i : i + chunk_size] for i in range(0, len(img_names), chunk_size)]
             if chunk_size != None
@@ -89,6 +88,8 @@ class YOLOConverter(BaseConverter):
 
     @classmethod
     def verify_label(cls, args):
+        # NOTE: put the assert here so it won't affect the XMLConverter
+        assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         # Verify one image-label pair
         img_name, img_dir, labels_dir, class_names = args
         im_file = osp.join(img_dir, img_name)
