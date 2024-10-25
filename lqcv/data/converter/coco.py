@@ -33,7 +33,7 @@ class COCOConverter(BaseConverter):
         super().__init__(json_file, img_dir=img_dir)
         self.format = 'coco'
 
-    def read_labels(self, json_file):
+    def read_labels(self, json_file, chunk_size=None):
         is_coco = True if "train2017" in json_file or "val2017" in json_file else False
         with open(json_file, "r") as f:
             data = json.load(f)
