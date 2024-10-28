@@ -334,7 +334,8 @@ class BaseConverter(metaclass=ABCMeta):
                 if cv2.waitKey(0) == ord("q"):
                     break
 
-    def get_xml_template(self):
+    @staticmethod
+    def get_xml_template():
         anntemp = """\
 <annotation>
     <folder>VOC</folder>
