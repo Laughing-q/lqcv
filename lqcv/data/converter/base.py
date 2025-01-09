@@ -43,6 +43,8 @@ class BaseConverter(metaclass=ABCMeta):
         annotations = list()
         objid = 1
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+        if copy_im:
+            os.makedirs(im_dir, exist_ok=True)
 
         pbar = tqdm(enumerate(self.labels), total=len(self.labels))
         pbar.desc = f"Convert {self.format.upper()} to COCO: "
@@ -114,6 +116,8 @@ class BaseConverter(metaclass=ABCMeta):
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
+        if copy_im:
+            os.makedirs(im_dir, exist_ok=True)
 
         anno_temp, obj_temp = self.get_xml_template()
         pbar = tqdm(self.labels, total=len(self.labels))
