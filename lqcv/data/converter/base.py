@@ -18,6 +18,7 @@ class BaseConverter(metaclass=ABCMeta):
         super().__init__()
         assert osp.exists(label_dir), f"The directory/file '{label_dir}' does not exist."
 
+        self.label_dir = label_dir   # adding this attribute since it'd be useful for some scenarios
         self.labels = list()
         self.catCount = defaultdict(int)
         self.catImgCnt = dict()
