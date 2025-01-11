@@ -25,13 +25,13 @@ class XMLConverter(YOLOConverter):
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
         super().__init__(label_dir, class_names, img_dir, chunk_size)
-        self.format = 'xml'
+        self.format = "xml"
 
     def read_labels(self, label_dir, chunk_size=None):
         super().read_labels(label_dir, chunk_size)
         # update class_names
         if self.class_names is None:
-            self.class_names = list(self.catCount.keys()) 
+            self.class_names = list(self.catCount.keys())
             LOGGER.warning("No class names provided, reading it automatically from xml files!")
         # update cls names cls indexs
         for l in self.labels:
@@ -53,7 +53,7 @@ class XMLConverter(YOLOConverter):
                 nl = len(objects)
                 if nl:
                     filename = xml.find("filename")
-                    assert (filename is not None), f"can't get `filename` info from {xml_file}"
+                    assert filename is not None, f"can't get `filename` info from {xml_file}"
                     filename = str(filename.text)
                     if filename != img_name:
                         # LOGGER.warning("[Filename] filename got different name from image name, "
@@ -66,18 +66,18 @@ class XMLConverter(YOLOConverter):
                         h = int(height.text)
                         w = int(width.text)
                     except:
-                        assert (img_dir is not None), f"can't get `width` or `height` info from {xml_file}"
+                        assert img_dir is not None, f"can't get `width` or `height` info from {xml_file}"
                         img_path = osp.join(img_dir, filename)
-                        assert osp.exists(img_path), \
-                                f"can't get `width` or `height` info from {xml_file} also can't find img file {img_path}"
+                        assert osp.exists(img_path), (
+                            f"can't get `width` or `height` info from {xml_file} also can't find img file {img_path}"
+                        )
                         h, w = cv2.imread(img_path).shape[:2]
                     shape = (h, w, 3)
                     cls, bbox = [], []
                     for obj in objects:
                         name = obj.find("name").text
                         if class_names is not None:
-                            assert (name in class_names), \
-                                    f"'{name}' not in {class_names} from {xml_file}"
+                            assert name in class_names, f"'{name}' not in {class_names} from {xml_file}"
                         cls.append(name)
                         box = obj.find("bndbox")
                         x1 = min(max(0, float(box.find("xmin").text)), w)
@@ -87,13 +87,14 @@ class XMLConverter(YOLOConverter):
                         bbox.append([x1, y1, x2, y2])
                     bbox = np.array(bbox, dtype=np.float32)
                     assert (bbox >= 0).all(), f"negative labels: {xml_file}"
-                    assert (bbox[:, 0::2] <= w).all() and (bbox[:, 1::2] <= h).all(), \
-                            f"non-normalized or out of bounds coordinate labels: {xml_file}"
+                    assert (bbox[:, 0::2] <= w).all() and (bbox[:, 1::2] <= h).all(), (
+                        f"non-normalized or out of bounds coordinate labels: {xml_file}"
+                    )
                     _, idx = np.unique(bbox, axis=0, return_index=True)
                     if len(idx) < nl:  # duplicate row check
                         bbox = bbox[idx]  # remove duplicates
                         cls = [cls[ii] for ii in idx]
-                        msg = f'WARNING ⚠️ {xml_file}: {nl - len(idx)} duplicate labels removed'
+                        msg = f"WARNING ⚠️ {xml_file}: {nl - len(idx)} duplicate labels removed"
                 else:
                     ne += 1
                     cls, bbox = [], np.zeros((0, 4), dtype=np.float32)
@@ -105,3 +106,12 @@ class XMLConverter(YOLOConverter):
             nc += 1
             msg = f"WARNING: Ignoring corrupted xml {xml_file}: {e}"
             return [None, None, None, None, nm, nf, ne, nc, msg]
+
+    def move_empty(self, save_dir, lb_suffix=".xml"):
+        """Move empty labels among with corresponding images to a new folder.
+
+        Args:
+            save_dir (str): The dst save folder.
+            lb_suffix (str): The suffix of the label file, could be ".txt" or ".xml".
+        """
+        return super().move_empty(save_dir, lb_suffix)
