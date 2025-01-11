@@ -358,7 +358,7 @@ class BaseConverter(metaclass=ABCMeta):
         save_im_dir, save_lb_dir = save_dir / "images", save_dir / "xmls"
         save_im_dir.mkdir(parents=True, exist_ok=True)
         save_lb_dir.mkdir(parents=True, exist_ok=True)
-        for label in tqdm(self.labels):
+        for label in tqdm(self.labels, desc="Moving empty labels and images"):
             if len(label["cls"]) > 0:
                 continue
             filename = label["img_name"]
