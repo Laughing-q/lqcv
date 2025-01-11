@@ -71,3 +71,6 @@ class COCOConverter(BaseConverter):
         # update catImgCnt
         for name, imgCnt in catImg.items():
             self.catImgCnt[name] = len(imgCnt)
+
+    def move_empty(self, save_dir, lb_suffix=".txt"):
+        raise NotImplementedError("COCO format does not this function for now!")
