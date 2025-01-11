@@ -164,9 +164,9 @@ class BaseConverter(metaclass=ABCMeta):
                 "Current format is YOLO! there's no need to convert it since `classes` and `classes_idx` are not given."
             )
             return
-        assert not (
-            classes is not None and classes_idx is not None
-        ), "`classes` and `classes_idx` are mutually exclusive."
+        assert not (classes is not None and classes_idx is not None), (
+            "`classes` and `classes_idx` are mutually exclusive."
+        )
         class_name = classes if classes is not None else self.class_names
         os.makedirs(save_dir, exist_ok=True)
         copy_im = im_dir is not None and classes is not None and self.img_dir is not None
@@ -264,7 +264,7 @@ class BaseConverter(metaclass=ABCMeta):
     def read_labels(self, label_dir):
         pass
 
-    def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False, shuffle=True):
+    def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False, shuffle=True, im_names=None):
         """Visualize labels.
 
         Args:
@@ -278,6 +278,7 @@ class BaseConverter(metaclass=ABCMeta):
                 all the bboxes would be plotted in images with sign if labels are filtered;
             shuffle (bool): Whether to shuffle the labels, this is for the use case of
                 randomly check images sometimes.
+            im_names (Optional | List[str]): Only visualize specific images if its image names provided.
         """
         if not osp.exists(self.img_dir):
             LOGGER.warning(f"'{self.img_dir}' doesn't exist.")
@@ -295,6 +296,8 @@ class BaseConverter(metaclass=ABCMeta):
             os.makedirs(save_dir, exist_ok=True)
         else:
             cv2.namedWindow("p", cv2.WINDOW_NORMAL)
+        if im_names is not None and isinstance(im_names, str):
+            im_names = [im_names]
 
         from ultralytics.utils.plotting import Annotator, colors
 
@@ -305,6 +308,8 @@ class BaseConverter(metaclass=ABCMeta):
                 if sign_only and len(sign) == 0:
                     continue
                 filename = label["img_name"]
+                if im_names is not None and filename not in im_names:
+                    continue
                 image = cv2.imread(osp.join(self.img_dir, filename))
                 if image is None:
                     continue
