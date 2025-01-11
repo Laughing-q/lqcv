@@ -351,6 +351,7 @@ class BaseConverter(metaclass=ABCMeta):
             save_dir (str): The dst save folder.
             lb_suffix (str): The suffix of the label file, could be ".txt" or ".xml".
         """
+        # NOTE: It seems this function is not needed since empty labels won't be kept in self.labels
         assert self.img_dir is not None
         assert lb_suffix in {".txt", ".xml"}
         img_dir, label_dir = Path(self.img_dir), Path(self.label_dir)
