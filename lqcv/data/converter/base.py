@@ -18,7 +18,7 @@ class BaseConverter(metaclass=ABCMeta):
         super().__init__()
         assert osp.exists(label_dir), f"The directory/file '{label_dir}' does not exist."
 
-        self.label_dir = label_dir   # adding this attribute since it'd be useful for some scenarios
+        self.label_dir = label_dir  # adding this attribute since it'd be useful for some scenarios
         self.labels = list()
         self.catCount = defaultdict(int)
         self.catImgCnt = dict()
@@ -343,6 +343,33 @@ class BaseConverter(metaclass=ABCMeta):
                 cv2.imshow("p", annotator.result())
                 if cv2.waitKey(0) == ord("q"):
                     break
+
+    def move_empty(self, save_dir, lb_suffix=".txt"):
+        """Move empty labels among with corresponding images to a new folder.
+
+        Args:
+            save_dir (str): The dst save folder.
+            lb_suffix (str): The suffix of the label file, could be ".txt" or ".xml".
+        """
+        assert self.img_dir is not None
+        assert lb_suffix in {".txt", ".xml"}
+        img_dir, label_dir = Path(self.img_dir), Path(self.label_dir)
+        save_dir = Path(save_dir)
+        save_im_dir, save_lb_dir = save_dir / "images", save_dir / "xmls"
+        save_im_dir.mkdir(parents=True, exist_ok=True)
+        save_lb_dir.mkdir(parents=True, exist_ok=True)
+        for label in tqdm(self.labels):
+            if len(label["cls"]) > 0:
+                continue
+            filename = label["img_name"]
+            im_file = img_dir / filename
+            lb_file = label_dir / Path(filename).with_suffix(lb_suffix)
+            if not im_file.exists():
+                print(f"{im_file} does not exist!")
+            if not lb_file.exists():
+                print(f"{lb_file} does not exist!")
+            shutil.move(im_file, save_im_dir)
+            shutil.move(lb_file, save_lb_dir)
 
     @staticmethod
     def get_xml_template():
