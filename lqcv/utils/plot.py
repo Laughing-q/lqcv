@@ -1,32 +1,43 @@
 import cv2
 
-LQCV_PAUSE=False
+LQCV_PAUSE = False
+
+
 def waitKey(delay=1, pause=False):
     """A better waitKey that can pause video or image sequences."""
     global LQCV_PAUSE
     key = cv2.waitKey(0 if LQCV_PAUSE or pause else delay)
-    LQCV_PAUSE = True if key == ord(' ') else False
+    LQCV_PAUSE = True if key == ord(" ") else False
     return key
 
+
 def cv2_imshow(im, delay=0, wname="p", nwindow=False, pause=False):
-    """A prepared cv2.imshow to reduce duplicate code."""
-    if nwindow:
-        cv2.namedWindow(wname, cv2.WINDOW_NORMAL)
-    cv2.imshow(wname, im)
-    if waitKey(delay, pause) == ord('q'):
+    """A prepared cv2.imshow to reduce duplicate code.
+
+    Args:
+        im: The image or list of images to display.
+        delay (int): The delay in milliseconds for cv2.waitKey. Defaults to 0.
+        wname (str): The window name prefix. Defaults to "p".
+        nwindow (bool): Whether to create a new window. Defaults to False.
+        pause (bool): Whether to pause the display. Defaults to False.
+    """
+
+    def single_show(img, window_name):
+        if nwindow:
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(window_name, img)
+
+    if isinstance(im, list):
+        for i, x in enumerate(im):
+            single_show(x, f"{wname}{i}")
+    else:
+        single_show(im, wname)
+    if waitKey(delay, pause) == ord("q"):
         exit()
 
 
 # NOTE: A non-threaded and return plotted image version of ultralytics's plot_images, for dataset debug.
-def plot_images(images,
-                batch_idx,
-                cls,
-                bboxes=None,
-                masks=None,
-                kpts=None,
-                paths=None,
-                fname='images.jpg',
-                names=None):
+def plot_images(images, batch_idx, cls, bboxes=None, masks=None, kpts=None, paths=None, fname="images.jpg", names=None):
     """Plot image grid with labels."""
     from ultralytics.utils.plotting import Annotator, colors
     from ultralytics.utils.ops import xywh2xyxy
@@ -59,7 +70,7 @@ def plot_images(images,
     max_subplots = 16  # max image subplots, i.e. 4x4
     bs, _, h, w = images.shape  # batch size, _, height, width
     bs = min(bs, max_subplots)  # limit plot images
-    ns = np.ceil(bs ** 0.5)  # number of subplots (square)
+    ns = np.ceil(bs**0.5)  # number of subplots (square)
     if np.max(images[0]) <= 1:
         images *= 255  # de-normalise (optional)
 
@@ -70,7 +81,7 @@ def plot_images(images,
             break
         x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
         im = im.transpose(1, 2, 0)
-        mosaic[y:y + h, x:x + w, :] = im
+        mosaic[y : y + h, x : x + w, :] = im
 
     # Resize (optional)
     scale = max_size / ns / max(h, w)
@@ -89,7 +100,7 @@ def plot_images(images,
             annotator.text((x + 5, y + 5), text=Path(paths[i]).name[:40], txt_color=(220, 220, 220))  # filenames
         if len(cls) > 0:
             idx = batch_idx == i
-            classes = cls[idx].astype('int')
+            classes = cls[idx].astype("int")
 
             if len(bboxes):
                 boxes = xywh2xyxy(bboxes[idx, :4]).T
@@ -109,13 +120,13 @@ def plot_images(images,
                     color = colors(c)
                     c = names.get(c, c) if names else c
                     if labels or conf[j] > 0.25:  # 0.25 conf thresh
-                        label = f'{c}' if labels else f'{c} {conf[j]:.1f}'
+                        label = f"{c}" if labels else f"{c} {conf[j]:.1f}"
                         annotator.box_label(box, label, color=color)
             elif len(classes):
                 for c in classes:
                     color = colors(c)
                     c = names.get(c, c) if names else c
-                    annotator.text((x, y), f'{c}', txt_color=color, box_style=True)
+                    annotator.text((x, y), f"{c}", txt_color=color, box_style=True)
 
             # Plot keypoints
             if len(kpts):
@@ -154,7 +165,9 @@ def plot_images(images,
                             mask = mask.astype(bool)
                         else:
                             mask = image_masks[j].astype(bool)
-                        im[y:y + h, x:x + w, :][mask] = im[y:y + h, x:x + w, :][mask] * 0.4 + np.array(color) * 0.6
+                        im[y : y + h, x : x + w, :][mask] = (
+                            im[y : y + h, x : x + w, :][mask] * 0.4 + np.array(color) * 0.6
+                        )
                 annotator.fromarray(im)
     # annotator.im.save(fname)  # save
     return annotator.result()
