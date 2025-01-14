@@ -97,7 +97,7 @@ def split_images_labels(data_dir, ratio=0.8):
     remove_extra_files(more_dir=label_dir, less_dir=f"{image_dir}/val", target_dir=val_dir, reverse=True)
 
 
-def get_files(root, suffix="", decs="", shuffle=False):
+def get_files(root, suffix="", decs="", shuffle=False, max_num=None):
     """
     Get a list of files in the specified root directory with the given suffix.
 
@@ -106,6 +106,7 @@ def get_files(root, suffix="", decs="", shuffle=False):
         suffix (str): The suffix of the files to search for. Defaults to an empty string.
             Example: ".jpg".
         decs (str): The description of the tqdm iterator. Defaults to an empty string.
+        max_num (int): The maximum number of files to return. Defaults to None.
 
     Returns:
         tqdm: A tqdm iterator over the list of files with the specified suffix.
@@ -116,6 +117,9 @@ def get_files(root, suffix="", decs="", shuffle=False):
     files = list(Path(root).glob(f"*{suffix}"))
     if shuffle:
         random.shuffle(files)
+    if max_num is not None:
+        assert isinstance(max_num, int), f"Expected `max_num` should be an integer, but got {type(max_num)}."
+        files = files[:max_num]
     return tqdm(files, desc=decs)
 
 
