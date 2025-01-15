@@ -9,7 +9,7 @@ import cv2
 import shutil
 
 
-def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''):
+def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=""):
     """Compute the similarity between images and remove these images with high similarity.
 
     Args:
@@ -35,7 +35,7 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
             img = cv2.imread(osp.join(img_dir, p))
             # assert img is not None
             if img is None:
-                os.remove(osp.join(img_dir, p))   # remove broken images.
+                os.remove(osp.join(img_dir, p))  # remove broken images.
                 continue
             with open(value_path, "a") as fv:
                 fv.write(str(compute(img)).replace("[", "").replace("]", "").replace(",", "") + "\n")
@@ -49,7 +49,7 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
         LOGGER.info("Can't find Name.txt or Value.txt! Creating automatically!")
         if count_only == False:
             LOGGER.info("Force to set `count_only=True` for the first time!")
-            count_only = True   # force to set count_only=True for the first time.
+            count_only = True  # force to set count_only=True for the first time.
         _create_values(str(filename), str(value))
 
     im_names = os.listdir(img_dir)
@@ -60,14 +60,14 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
         LOGGER.info("`names` is not matched! Creating new one automatically!")
         if count_only == False:
             LOGGER.info("Force to set `count_only=True` for the first time!")
-            count_only = True   # force to set count_only=True for the first time.
+            count_only = True  # force to set count_only=True for the first time.
         _create_values(str(filename), str(value))
         # reload names and values
         with open(str(filename), "r") as f:
             names = [i.strip() for i in f.readlines()]
         values = np.loadtxt(str(value), dtype=np.uint8)
 
-    remove_dir = (im_parent / "removed")
+    remove_dir = im_parent / "removed"
     remove_dir.mkdir(parents=True, exist_ok=True)
     removed_idx = []
     counter = 0
@@ -94,7 +94,105 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=''
                 continue
             os.makedirs(idx_dir, exist_ok=True)
             shutil.move(osp.join(img_dir, names[idx]), idx_dir)
-    print(f"keep counter:{len(values) - counter}/{len(values)}", )
+    print(
+        f"keep counter:{len(values) - counter}/{len(values)}",
+    )
+
+
+def similarity2(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt", name="", gpu=True):
+    """Compute the similarity between images and remove these images with high similarity.
+
+    Args:
+        img_dir (str): Image dir.
+        threshold (float): The threshold, range [0, 1].
+        count_only (bool): Only count how many images will be removed, intead of actually removing them.
+        stype (str): The calculation type of similarity, could be `phash` and `img`.
+        name (str): The save name for HashValues and HashNames.
+    """
+
+    import torch
+
+    def _create_values(filename_path, value_path, model):
+        """Create new hash map."""
+        from ultralytics import YOLO
+
+        model = YOLO(model)
+        if osp.exists(filename_path):
+            os.remove(filename_path)
+        if osp.exists(value_path):
+            os.remove(value_path)
+        imgs_lists = os.listdir(img_dir)
+        pbar = tqdm(imgs_lists, total=len(imgs_lists), desc="Creating values")
+        feats = []
+        for p in pbar:
+            img = cv2.imread(osp.join(img_dir, p))
+            # assert img is not None
+            if img is None:
+                os.remove(osp.join(img_dir, p))  # remove broken images.
+                continue
+
+            feat = model.predict(img, embed=True, verbose=False, half=True)[0]  # (1, 1280)
+            feat = torch.nn.functional.normalize(feat.cpu())
+            feats.append(feat)
+            with open(filename_path, "a") as fn:
+                fn.write(p + "\n")
+        torch.save(torch.cat(feats, dim=0), value_path)  # (N, 1280)
+
+    im_parent = Path(img_dir).parent
+    filename = im_parent / f"{name}Name.txt"
+    value = im_parent / f"{name}Value.pth"
+    if not (filename.exists() and value.exists()):
+        LOGGER.info("Can't find Name.txt or Value.txt! Creating automatically!")
+        if count_only == False:
+            LOGGER.info("Force to set `count_only=True` for the first time!")
+            count_only = True  # force to set count_only=True for the first time.
+        _create_values(str(filename), str(value), model=model)
+
+    im_names = os.listdir(img_dir)
+    with open(str(filename), "r") as f:
+        names = [i.strip() for i in f.readlines()]
+    values = torch.load(str(value))  # (N, 1280)
+    if len(names) != len(values) or names != im_names:
+        LOGGER.info("`names` is not matched! Creating new one automatically!")
+        if count_only == False:
+            LOGGER.info("Force to set `count_only=True` for the first time!")
+            count_only = True  # force to set count_only=True for the first time.
+        _create_values(str(filename), str(value), model=model)
+        # reload names and values
+        with open(str(filename), "r") as f:
+            names = [i.strip() for i in f.readlines()]
+        values = torch.load(str(value))  # (N, 1280)
+
+    remove_dir = im_parent / "removed"
+    remove_dir.mkdir(parents=True, exist_ok=True)
+    removed_idx = []
+    counter = 0
+
+    pbar = tqdm(enumerate(values), total=len(values))
+    pbar.desc = f"{name}"
+
+    for i, v in pbar:
+        # s = np.dot(v, values.T)
+        # NOTE: using pytorch is way more faster than np.dot(even running on cpu)
+        s = torch.mm(v.unsqueeze(0), values.T).cpu().numpy().squeeze(0)
+        if (not (s > threshold).any()) or i in removed_idx:
+            continue
+        indexes = np.argwhere(s[i + 1 :] > threshold).squeeze(-1) + i + 1
+        if len(indexes) == 0:
+            continue
+        idx_dir = osp.join(remove_dir, f"{names[i]}")
+        for idx in indexes:
+            if idx in removed_idx:
+                continue
+            removed_idx.append(idx)
+            counter += 1
+            if count_only:
+                continue
+            os.makedirs(idx_dir, exist_ok=True)
+            shutil.move(osp.join(img_dir, names[idx]), idx_dir)
+    print(
+        f"keep counter:{len(values) - counter}/{len(values)}",
+    )
 
 
 def generate_fog(img):
@@ -105,7 +203,7 @@ def generate_fog(img):
 
     Returns:
         img (np.ndarray): Return foggy image.
-        
+
     """
     exp = 1 if np.random.uniform() < 0.5 else 2
     assert exp in [1, 2]
@@ -114,8 +212,8 @@ def generate_fog(img):
     fog = np.ones((h, w), dtype=np.uint8) * pixel
     start = np.random.uniform(0, 0.2)
     end = np.random.uniform(0.8, 1.0)
-    m = np.arange(start, end, step=(end - start)/h)[:h]
-    m = m ** 2 if exp == 2 else m
+    m = np.arange(start, end, step=(end - start) / h)[:h]
+    m = m**2 if exp == 2 else m
     img = (img * m[:, None, None] + fog[..., None] * (1 - m[:, None, None])).astype(np.uint8)
     return img
 
@@ -135,6 +233,6 @@ def resize(im, max_size, scaleup=False):
     r = min(max_size / shape[0], max_size / shape[1])
     if (r >= 1.0) and not scaleup:
         return im
-    new_shape = int(round(shape[1] * r)), int(round(shape[0] * r)) # w, h
+    new_shape = int(round(shape[1] * r)), int(round(shape[0] * r))  # w, h
     im = cv2.resize(im, new_shape)
     return im
