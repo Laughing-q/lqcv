@@ -99,8 +99,8 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=""
     )
 
 
-def similarity2(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt", name="", gpu=True):
-    """Compute the similarity between images and remove these images with high similarity.
+def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt", name="", gpu=True):
+    """Compute the similarity between images and remove these images with high similarity, powered by YOLO models.
 
     Args:
         img_dir (str): Image dir.
