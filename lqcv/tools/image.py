@@ -132,7 +132,7 @@ def similarity2(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt
                 continue
 
             feat = model.predict(img, embed=True, verbose=False, half=True)[0]  # (1, 1280)
-            feat = torch.nn.functional.normalize(feat.cpu())
+            feat = torch.nn.functional.normalize(feat if gpu else feat.cpu())
             feats.append(feat)
             with open(filename_path, "a") as fn:
                 fn.write(p + "\n")
