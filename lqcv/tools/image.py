@@ -106,8 +106,9 @@ def similarity2(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt
         img_dir (str): Image dir.
         threshold (float): The threshold, range [0, 1].
         count_only (bool): Only count how many images will be removed, intead of actually removing them.
-        stype (str): The calculation type of similarity, could be `phash` and `img`.
+        model (str): The model using to calculate the embeddings.
         name (str): The save name for HashValues and HashNames.
+        gpu (bool): Whether to use gpu to calculate the embeddings.
     """
 
     import torch
