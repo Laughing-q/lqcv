@@ -169,9 +169,9 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
     removed_idx = []
     counter = 0
 
+    values = values.cuda() if gpu else values  # in case the saved `values` are loaded on cpu
     pbar = tqdm(enumerate(values), total=len(values))
     pbar.desc = f"{name}"
-
     for i, v in pbar:
         # s = np.dot(v, values.T)
         # NOTE: using pytorch is way more faster than np.dot(even running on cpu)
