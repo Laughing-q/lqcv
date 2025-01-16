@@ -15,7 +15,7 @@ class ImagesDataset(Dataset):
         """
         super().__init__()
         assert backend in {"cv2", "PIL"}
-        self.im_files = Path(im_dir).glob("*")
+        self.im_files = list(Path(im_dir).glob("*"))
         self.backend = backend
         self.transform = transform
 
