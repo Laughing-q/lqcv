@@ -132,7 +132,7 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
                 os.remove(osp.join(img_dir, p))  # remove broken images.
                 continue
 
-            feat = model.predict(img, embed=True, verbose=False, half=True)[0]  # (1, 1280)
+            feat = model.predict(img, embed=True, verbose=False, half=True, imgsz=224)[0]  # (1, 1280)
             feat = torch.nn.functional.normalize(feat if gpu else feat.cpu())
             feats.append(feat)
             with open(filename_path, "a") as fn:
