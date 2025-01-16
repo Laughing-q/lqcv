@@ -104,7 +104,7 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
 
     Args:
         img_dir (str): Image dir.
-        threshold (float): The threshold, range [0, 1].
+        threshold (float | List[float]): The threshold, range [0, 1].
         count_only (bool): Only count how many images will be removed, intead of actually removing them.
         model (str): The model using to calculate the embeddings.
         name (str): The save name for HashValues and HashNames.
@@ -139,6 +139,11 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
                 fn.write(p + "\n")
         torch.save(torch.cat(feats, dim=0), value_path)  # (N, 1280)
 
+    if isinstance(threshold, list):
+        assert count_only, f"Expected `count_only=True` when passing a list of threshold."
+    if not isinstance(threshold, list):
+        threshold = [threshold]
+
     im_parent = Path(img_dir).parent
     filename = im_parent / f"{name}Name.txt"
     value = im_parent / f"{name}Value.pth"
@@ -166,8 +171,9 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
 
     remove_dir = im_parent / "removed"
     remove_dir.mkdir(parents=True, exist_ok=True)
-    removed_idx = []
-    counter = 0
+    # NOTE: [[]] * len(threshold) will have the same reference.
+    removed_idx = [[] for _ in range(len(threshold))]
+    counter = [0] * len(threshold)
 
     values = values.cuda() if gpu else values  # in case the saved `values` are loaded on cpu
     pbar = tqdm(enumerate(values), total=len(values))
@@ -176,24 +182,26 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
         # s = np.dot(v, values.T)
         # NOTE: using pytorch is way more faster than np.dot(even running on cpu)
         s = torch.mm(v.unsqueeze(0), values.T).cpu().numpy().squeeze(0)
-        if (not (s > threshold).any()) or i in removed_idx:
-            continue
-        indexes = np.argwhere(s[i + 1 :] > threshold).squeeze(-1) + i + 1
-        if len(indexes) == 0:
-            continue
-        idx_dir = osp.join(remove_dir, f"{names[i]}")
-        for idx in indexes:
-            if idx in removed_idx:
+        for ti, t in enumerate(threshold):
+            if (not (s > t).any()) or i in removed_idx[ti]:
                 continue
-            removed_idx.append(idx)
-            counter += 1
-            if count_only:
+            indexes = np.argwhere(s[i + 1 :] > t).squeeze(-1) + i + 1
+            if len(indexes) == 0:
                 continue
-            os.makedirs(idx_dir, exist_ok=True)
-            shutil.move(osp.join(img_dir, names[idx]), idx_dir)
-    print(
-        f"keep counter:{len(values) - counter}/{len(values)}",
-    )
+            idx_dir = osp.join(remove_dir, f"{names[i]}")
+            for idx in indexes:
+                if idx in removed_idx[ti]:
+                    continue
+                removed_idx[ti].append(idx)
+                counter[ti] += 1
+                if count_only:
+                    continue
+                os.makedirs(idx_dir, exist_ok=True)
+                shutil.move(osp.join(img_dir, names[idx]), idx_dir)
+    for count in counter:
+        print(
+            f"keep counter:{len(values) - count}/{len(values)}",
+        )
 
 
 def generate_fog(img):
