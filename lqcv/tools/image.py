@@ -139,10 +139,10 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
                 fn.write(p + "\n")
         torch.save(torch.cat(feats, dim=0), value_path)  # (N, 1280)
 
-    if isinstance(threshold, list):
-        assert count_only, f"Expected `count_only=True` when passing a list of threshold."
     if not isinstance(threshold, list):
         threshold = [threshold]
+    if len(threshold) > 1:
+        assert count_only, f"Expected `count_only=True` when passing a list of threshold."
 
     im_parent = Path(img_dir).parent
     filename = im_parent / f"{name}Name.txt"
