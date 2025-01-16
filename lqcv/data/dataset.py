@@ -29,10 +29,10 @@ class ImagesDataset(Dataset):
             (dict): A dictionary containing the processed image, its shape, and the image file path.
         """
         if self.backend == "cv2":
-            im = cv2.imread(im_file)
+            im = cv2.imread(str(im_file))
             shape = im.shape[:2]
         else:
-            im = Image.open(im_file).convert("RGB")
+            im = Image.open(str(im_file)).convert("RGB")
             shape = [im.height, im.width]
         im = self.transform(im) if self.transform else im
         return {"im": im, "shape": shape, "im_file": im_file}
@@ -46,7 +46,7 @@ class ImagesDataset(Dataset):
         Returns:
             (dict): A dictionary containing the processed image, its shape, and the image file path.
         """
-        return self.preprocess(str(self.im_files[index]))
+        return self.preprocess(self.im_files[index])
 
     def __len__(self):
         """Returns the length of the image file list for the dataset."""
