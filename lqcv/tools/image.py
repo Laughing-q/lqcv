@@ -113,30 +113,36 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
 
     import torch
 
-    def _create_values(filename_path, value_path, model):
+    def _create_values(filename_path, value_path, model, batch=128):
         """Create new hash map."""
         from ultralytics import YOLO
+        from ultralytics.data.augment import classify_transforms
+        from ultralytics.data import build_dataloader
+        from lqcv.data import ImagesDataset
 
         model = YOLO(model)
         if osp.exists(filename_path):
             os.remove(filename_path)
         if osp.exists(value_path):
             os.remove(value_path)
-        imgs_lists = os.listdir(img_dir)
-        pbar = tqdm(imgs_lists, total=len(imgs_lists), desc="Creating values")
-        feats = []
-        for p in pbar:
-            img = cv2.imread(osp.join(img_dir, p))
-            # assert img is not None
-            if img is None:
-                os.remove(osp.join(img_dir, p))  # remove broken images.
-                continue
 
-            feat = model.predict(img, embed=True, verbose=False, half=True, imgsz=224)[0]  # (1, 1280)
+        dataset = ImagesDataset(
+            im_dir=img_dir,
+            transform=classify_transforms(size=224),
+            backend="PIL",
+        )
+        loader = build_dataloader(dataset, batch=batch, workers=8, shuffle=False)
+
+        pbar = tqdm(loader, total=len(loader), desc="Creating values")
+        feats = []
+        for data in pbar:
+            im = torch.stack(data["im"], dim=0)
+            feat = model.predict(im, embed=True, verbose=False, half=True, imgsz=224)[0]  # (1, 1280)
             feat = torch.nn.functional.normalize(feat if gpu else feat.cpu())
             feats.append(feat)
             with open(filename_path, "a") as fn:
-                fn.write(p + "\n")
+                for im_file in data["im_file"]:
+                    fn.write(im_file.name + "\n")
         torch.save(torch.cat(feats, dim=0), value_path)  # (N, 1280)
 
     if not isinstance(threshold, list):
