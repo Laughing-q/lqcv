@@ -160,9 +160,10 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
             count_only = True  # force to set count_only=True for the first time.
         _create_values(str(filename), str(value), model=model)
 
-    im_names = os.listdir(img_dir)
+    # NOTE: the order of im_names might be different sometimes, sort them to make sure the order is correct.
+    im_names = sorted(os.listdir(img_dir))
     with open(str(filename), "r") as f:
-        names = [i.strip() for i in f.readlines()]
+        names = sorted([i.strip() for i in f.readlines()])
     values = torch.load(str(value))  # (N, 1280)
     if len(names) != len(values) or names != im_names:
         LOGGER.info("`names` is not matched! Creating new one automatically!")
