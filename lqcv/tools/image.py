@@ -198,9 +198,9 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
                     continue
                 os.makedirs(idx_dir, exist_ok=True)
                 shutil.move(osp.join(img_dir, names[idx]), idx_dir)
-    for count in counter:
+    for i, count in enumerate(counter):
         print(
-            f"keep counter:{len(values) - count}/{len(values)}",
+            f"Threshold={threshold[i]}, keep counter:{len(values) - count}/{len(values)}",
         )
 
 
