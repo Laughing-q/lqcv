@@ -433,3 +433,21 @@ class BaseConverter(metaclass=ABCMeta):
             tablefmt="fancy_grid",
             missingval="None",
         )
+
+    def updateCntInfo(self):
+        """
+        Update the count information.
+
+        Use this whenever the labels are updated.
+        """
+        catCount = np.zeros(len(self.class_names), dtype=np.int32)
+        catImgCnt = np.zeros(len(self.class_names), dtype=np.int32)
+        for l in tqdm(self.labels, desc="Updating count info"):
+            cls = l["cls"]
+            if len(cls) == 0:
+                continue
+            catImgCnt[cls] += 1
+            catCount += np.bincount(np.array(cls), minlength=len(self.class_names))
+        for i, name in enumerate(self.class_names):
+            self.catCount[name] = catCount[i]
+            self.catImgCnt[name] = catImgCnt[i]
