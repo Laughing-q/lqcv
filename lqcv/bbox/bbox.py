@@ -39,18 +39,22 @@ class Boxes:
     @classmethod
     def stack(cls, boxes_list: List["Boxes"], dim=0):
         assert isinstance(boxes_list, (list, tuple))
+        formats = [box.format for box in boxes_list]
+        assert len(set(formats)) == 1, f"Expected all boxes to have the same format, but got {formats}."
 
         if len(boxes_list) == 1:
             return boxes_list[0]
-        return cls(ops.stack([b.bboxes for b in boxes_list], dim=dim))
+        return cls(ops.stack([b.bboxes for b in boxes_list], dim=dim), format=formats[0])
 
     @classmethod
     def cat(cls, boxes_list: List["Boxes"], dim=0):
         assert isinstance(boxes_list, (list, tuple))
+        formats = [box.format for box in boxes_list]
+        assert len(set(formats)) == 1, f"Expected all boxes to have the same format, but got {formats}."
 
         if len(boxes_list) == 1:
             return boxes_list[0]
-        return cls(ops.cat([b.data for b in boxes_list], dim=dim))
+        return cls(ops.cat([b.data for b in boxes_list], dim=dim), format=formats[0])
 
     @property
     def lt(self):
