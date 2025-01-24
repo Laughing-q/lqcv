@@ -262,7 +262,7 @@ class BaseConverter(metaclass=ABCMeta):
                 LOGGER.info(f"Filter results: {len(label['bbox'])}/{ori_len}")
 
     @abstractmethod
-    def read_labels(self, label_dir):
+    def read_labels(self, label_dir, chunk_size):
         pass
 
     def visualize(self, save_dir=None, classes=[], show_labels=True, sign_only=False, shuffle=True, im_names=None):
