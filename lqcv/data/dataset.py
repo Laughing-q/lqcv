@@ -16,6 +16,7 @@ class ImagesDataset(Dataset):
         super().__init__()
         assert backend in {"cv2", "PIL"}
         self.im_files = list(Path(im_dir).glob("*"))
+        assert len(self.im_files) > 0, f"No images found in {im_dir}"
         self.backend = backend
         self.transform = transform
 
