@@ -99,7 +99,7 @@ def similarity(img_dir, threshold=0.95, count_only=False, stype="phash", name=""
     )
 
 
-def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt", name="", gpu=True):
+def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cls.pt", name="", gpu=True, force=False):
     """Compute the similarity between images and remove these images with high similarity, powered by YOLO models.
 
     Args:
@@ -109,6 +109,7 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
         model (str): The model using to calculate the embeddings.
         name (str): The save name for HashValues and HashNames.
         gpu (bool): Whether to use gpu to calculate the embeddings.
+        force (bool): Force to directly remove images, even it's the first calculating similarity.
     """
 
     import torch
@@ -155,7 +156,7 @@ def similarity_yolo(img_dir, threshold=0.95, count_only=False, model="yolo11n-cl
     value = im_parent / f"{name}Value.pth"
     if not (filename.exists() and value.exists()):
         LOGGER.info("Can't find Name.txt or Value.txt! Creating automatically!")
-        if count_only == False:
+        if count_only == False and not force:
             LOGGER.info("Force to set `count_only=True` for the first time!")
             count_only = True  # force to set count_only=True for the first time.
         _create_values(str(filename), str(value), model=model)
