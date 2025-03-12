@@ -48,7 +48,11 @@ class XMLConverter(YOLOConverter):
             # verify labels
             if os.path.isfile(xml_file):
                 nf += 1  # label found
-                xml = ET.parse(xml_file).getroot()
+                with open(xml_file) as f:
+                    text = f.read()
+                text = text.replace("&", "&amp;")  # replace `&` or the parse would fail
+                xml = ET.fromstring(text)
+                # xml = ET.parse(xml_file).getroot()
                 objects = xml.findall("object")
                 nl = len(objects)
                 if nl:
