@@ -451,3 +451,18 @@ class BaseConverter(metaclass=ABCMeta):
         for i, name in enumerate(self.class_names):
             self.catCount[name] = catCount[i]
             self.catImgCnt[name] = catImgCnt[i]
+
+    def to_dict(self):
+        """Converts the labels to a dictionary, it's useful to use dict format for comparison/matching between multiple group of labels.
+
+        Iterates over the labels and creates a dictionary where the keys are
+        image names and the values are the corresponding label data.
+
+        Returns:
+            dict: A dictionary with image names as keys and label data as values.
+        """
+        labels = {}
+        pbar = tqdm(self.labels, total=len(self.labels))
+        for label in pbar:
+            labels[label["img_name"]] = label
+        return labels
