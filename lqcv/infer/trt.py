@@ -16,7 +16,13 @@ class TRTModel:
         Binding = namedtuple("Binding", ("name", "dtype", "shape", "data", "ptr"))
         logger = trt.Logger(trt.Logger.INFO)
         with open(model_file, "rb") as f, trt.Runtime(logger) as runtime:
-            model = runtime.deserialize_cuda_engine(f.read())
+            try:
+                import json
+                meta_len = int.from_bytes(f.read(4), byteorder="little")  # read metadata length
+                metadata = json.loads(f.read(meta_len).decode("utf-8"))  # read metadata
+            except UnicodeDecodeError:
+                f.seek(0)  # engine file may lack embedded Ultralytics metadata
+            model = runtime.deserialize_cuda_engine(f.read())  # read engine
         self.context = model.create_execution_context()
         self.bindings = OrderedDict()
         self.half = False
