@@ -133,7 +133,7 @@ class YOLOConverter(BaseConverter):
             # NOTE: denormlize coordinates
             l[:, 2::2] *= shape[0]  # h
             l[:, 1::2] *= shape[1]  # w
-            return img_name, l[:, 0], Boxes(l[:, 1:], format="xywh"), shape, nm, nf, ne, nc, ""
+            return img_name, l[:, 0].tolist(), Boxes(l[:, 1:], format="xywh"), shape, nm, nf, ne, nc, ""
         except Exception as e:
             nc += 1
             msg = f"WARNING: Ignoring corrupted image and/or label {im_file}: {e}"
