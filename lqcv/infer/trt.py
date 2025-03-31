@@ -22,17 +22,35 @@ class TRTModel:
         self.half = False
         self.input_names = []
         self.output_names = []
-        for i in range(model.num_bindings):
-            name = model.get_binding_name(i)
-            dtype = trt.nptype(model.get_binding_dtype(i))
-            # dtype = np.float16 if self.half else np.float32
-            if model.binding_is_input(i):
-                self.input_names.append(name)
-                if dtype == np.float16:
-                    self.half = True
-            else:  # output
-                self.output_names.append(name)
-            shape = tuple(self.context.get_binding_shape(i))
+        is_trt10 = not hasattr(model, "num_bindings")
+        num = range(model.num_io_tensors) if is_trt10 else range(model.num_bindings)
+        for i in num:
+            if is_trt10:
+                name = model.get_tensor_name(i)
+                dtype = trt.nptype(model.get_tensor_dtype(name))
+                is_input = model.get_tensor_mode(name) == trt.TensorIOMode.INPUT
+                if is_input:
+                    self.input_names.append(name)
+                    if -1 in tuple(model.get_tensor_shape(name)):
+                        self.context.set_input_shape(name, tuple(model.get_tensor_profile_shape(name, 0)[1]))
+                    if dtype == np.float16:
+                        self.half = True
+                else:
+                    self.output_names.append(name)
+                shape = tuple(self.context.get_tensor_shape(name))
+            else:  # TensorRT < 10.0
+                name = model.get_binding_name(i)
+                dtype = trt.nptype(model.get_binding_dtype(i))
+                is_input = model.binding_is_input(i)
+                if model.binding_is_input(i):
+                    self.input_names.append(name)
+                    if -1 in tuple(model.get_binding_shape(i)):  # dynamic
+                        self.context.set_binding_shape(i, tuple(model.get_profile_shape(0, i)[1]))
+                    if dtype == np.float16:
+                        self.half = True
+                else:
+                    self.output_names.append(name)
+                shape = tuple(self.context.get_binding_shape(i))
             im = torch.from_numpy(np.empty(shape, dtype=dtype)).cuda()
             self.bindings[name] = Binding(name, dtype, shape, im, int(im.data_ptr()))
         self.binding_addrs = OrderedDict((n, d.ptr) for n, d in self.bindings.items())
