@@ -5,6 +5,7 @@ import torch.nn as nn
 from .trt import TRTModel
 from .onnx import ONNXModel
 from .ncnn import NCNNModel
+from .openvino import OVModel
 
 
 class BaseInference:
@@ -23,6 +24,7 @@ class BaseInference:
         self.engine = model_file.endswith(".engine")
         self.onnx = model_file.endswith(".onnx")
         self.ncnn = model_file.endswith(".param")
+        self.ov = model_file.endswith(".xml")  # openvino
         self.providers = providers
         self.ncnn_gpu = ncnn_gpu
 
@@ -45,6 +47,8 @@ class BaseInference:
             model = ONNXModel(model_file, providers=self.providers)
         elif self.ncnn:
             model = NCNNModel(model_file, use_gpu=self.ncnn_gpu)
+        elif self.ov:
+            model = OVModel(model_file)
         else:
             model = self.load_torch_model(model_file)
         return model
