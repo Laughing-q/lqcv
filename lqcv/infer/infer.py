@@ -30,7 +30,7 @@ class BaseInference:
 
         self.model = self.load_model(model_file)
         self.torch = isinstance(self.model, nn.Module)
-        if self.onnx or self.ncnn:
+        if self.ncnn:
             assert self.half == False, "ONNX model is not compatible with half mode!"
         # NOTE: for torch model
         if self.torch:
@@ -45,6 +45,7 @@ class BaseInference:
             self.half = model.half
         elif self.onnx:
             model = ONNXModel(model_file, providers=self.providers)
+            self.half = model.half
         elif self.ncnn:
             model = NCNNModel(model_file, use_gpu=self.ncnn_gpu)
         elif self.ov:
@@ -84,7 +85,10 @@ class BaseInference:
             im /= self.std     # do normalization in RGB order
         if self.torch or self.engine:
             im = torch.from_numpy(im).cuda()   # to torch, to cuda
-        im = im.half() if self.half else im
+        if self.onnx and self.half:
+            im = im.astype(np.float16)
+        elif self.half:
+            im = im.half()
         return im
 
     def _single_preprocess(self, im):

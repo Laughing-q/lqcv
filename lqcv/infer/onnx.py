@@ -13,6 +13,7 @@ class ONNXModel:
             providers (list[str]): The backend providers of onnxruntime.
         """
         self.session = onnxruntime.InferenceSession(model_file, providers=providers)
+        self.half = "float16" in self.session.get_inputs()[0].type
         inputs = self.session.get_inputs()
         input_names = []
         for input in inputs:
