@@ -27,7 +27,8 @@ class OVModel:
 
         self.ov_model = core.compile_model(
             ov_model,
-            device_name="AUTO",  # AUTO selects best available device, do not modify
+            # device_name="AUTO",  # AUTO selects best available device, do not modify
+            device_name="CPU",  # AUTO selects best available device, do not modify
             config={"PERFORMANCE_HINT": "LATENCY"},
         )
 
