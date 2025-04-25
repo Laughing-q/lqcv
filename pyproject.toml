@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lqcv"
+dynamic = ["version"]
+description = "A Python package by Laughing-q"
+readme = "README.md"
+requires-python = ">=3.6"
+authors = [
+    { name = "Laughing-q" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.dynamic]
+version = { attr = "lqcv.__version__" }
