@@ -14,12 +14,12 @@ import cv2
 
 
 class YOLOConverter(BaseConverter):
-    def __init__(self, label_dir, class_names, img_dir=None, chunk_size=None) -> None:
+    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None) -> None:
         """YOLOConverter.
 
         Args:
             label_dir (str): The directory of .txt labels.
-            class_names (List[str]): Class names.
+            class_names (List[str] | optional): Class names.
             img_dir (str | optional): Image directory,
                 if it's None then assume the structure is like the following example:
                     root/
@@ -28,7 +28,7 @@ class YOLOConverter(BaseConverter):
         """
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
-        if self.__class__.__name__ == "YOLOConverter":   # Do not affect XMLConverter
+        if self.__class__.__name__ == "YOLOConverter":  # Do not affect XMLConverter
             assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
         super().__init__(label_dir, class_names, img_dir, chunk_size)
         self.format = "yolo"
@@ -76,7 +76,7 @@ class YOLOConverter(BaseConverter):
                     if img_name:
                         self.labels.append(dict(img_name=img_name, shape=shape, cls=cls, bbox=bbox))
                         for c in cls:
-                            name = c if isinstance(c, str) else self.class_names[int(c)]
+                            name = c if self.class_names is None or isinstance(c, str) else self.class_names[int(c)]
                             self.catCount[name] += 1
                             if img_name not in catImg[name]:
                                 catImg[name].append(img_name)
@@ -88,6 +88,8 @@ class YOLOConverter(BaseConverter):
         # update catImgCnt
         for name, imgCnt in catImg.items():
             self.catImgCnt[name] = len(imgCnt)
+        if self.class_names is None:  # is no class names provided
+            self.class_names = list(range(int(max(self.catCount.keys())) + 1))
 
     @classmethod
     def verify_label(self, args):
@@ -123,7 +125,8 @@ class YOLOConverter(BaseConverter):
                         l = l[i]  # remove duplicates
                         msg = f"WARNING ⚠️ {im_file}: {nl - len(i)} duplicate labels removed"
                     assert np.unique(l, axis=0).shape[0] == l.shape[0], "duplicate labels"
-                    assert (l[:, 0] < len(class_names)).all(), f"label cls index out of range, {l[:, 0]}, {lb_file}"
+                    if class_names is not None:
+                        assert (l[:, 0] < len(class_names)).all(), f"label cls index out of range, {l[:, 0]}, {lb_file}"
                 else:
                     ne = 1  # label empty
                     l = np.zeros((0, 5), dtype=np.float32)

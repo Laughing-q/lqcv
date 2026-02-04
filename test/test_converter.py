@@ -65,3 +65,6 @@ if __name__ == "__main__":
     #     json_file="/d/dataset/COCO/annotations/instances_val2017.json",
     #     img_dir="/d/dataset/COCO/images/val2017",
     # )
+
+    # converter cli examples
+    # lqcv convert --from yolo --to yolo --source coco/labels/val2017 --img-dir coco/images/val2017 --save-dir ./test-person/labels --filter-classes "0" --copy-images ./test-person/image
