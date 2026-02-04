@@ -259,5 +259,21 @@ def visualize_command(
     click.echo(f"✅ Visualizations saved to {save_dir}")
 
 
+@main.command("imshow")
+@click.option("--source", required=True, help="Path to labels directory (YOLO/XML) or JSON file (COCO)")
+@click.option("--shuffle", is_flag=True, default=False, help="Randomize image order")
+def imshow_command(source: str, shuffle: bool):
+    """Display dataset images with annotations in an interactive window."""
+    from lqcv.tools.file import get_files
+    from lqcv.utils.plot import cv2_imshow
+    import cv2
+
+    for file in get_files(source, shuffle=shuffle):
+        im = cv2.imread(str(file))
+        if im is None:
+            continue
+        cv2_imshow(im)
+
+
 if __name__ == "__main__":
     main()
