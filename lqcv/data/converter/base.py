@@ -329,7 +329,7 @@ class BaseConverter(metaclass=ABCMeta):
                             sign_info += f" {k}"
                     if sign_only and len(sign_info) == 0:
                         continue
-                    l = self.class_names[int(c)] + sign_info if show_labels else None
+                    l = f"{self.class_names[int(c)]}" + sign_info if show_labels else None
                     annotator.box_label(bbox.data[i], l, color=colors(int(c), True))
                     plotted = True
             except Exception as e:
