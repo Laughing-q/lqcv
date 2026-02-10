@@ -415,8 +415,19 @@ class BaseConverter(metaclass=ABCMeta):
         return anntemp, objtemp
 
     def __repr__(self):
-        total_img = 0
-        total_obj = 0
+        """The string representation of the converter, which includes the format, class names and label info."""
+        return self._get_label_info()
+
+    def _get_label_info(self, sort_by_count=False):
+        """Get the label information in a table format.
+
+        Args:
+            sort_by_count (bool): Whether to sort the table by image count, default: False.
+
+        Returns:
+            (str): The label information in a table format.
+        """
+        total_img, total_obj = 0, 0
         cat_table = []
         for i, c in enumerate(self.class_names):
             if c in self.catImgCnt and c in self.catCount:
@@ -426,6 +437,8 @@ class BaseConverter(metaclass=ABCMeta):
             else:
                 cat_table.append((str(i), str(c), 0, 0))
 
+        if sort_by_count:
+            cat_table.sort(key=lambda x: x[2], reverse=True)
         cat_table += [(" ", "total", total_img, total_obj)]
         return "\n" + tabulate(
             cat_table,
@@ -562,7 +575,7 @@ class BaseConverter(metaclass=ABCMeta):
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
         LOGGER.info(f"Statistics visualization saved to {save_path}")
         plt.close()
-        LOGGER.info(self)
+        LOGGER.info(self._get_label_info(sort_by_count=True))
         LOGGER.info(
             f"Small box cnt: {box_counts['Small(0-32²)']}\nMedium box cnt: {box_counts['Medium(32²-96²)']}\nLarge box cnt: {box_counts['Large(>96²)']}"
         )
