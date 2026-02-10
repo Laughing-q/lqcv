@@ -260,7 +260,7 @@ def visualize_command(
 
 
 @main.command("imshow")
-@click.option("--source", required=True, help="Path to images directory")
+@click.option("--source", required=True, multiple=True, help="Path to images directory")
 @click.option("--shuffle", is_flag=True, default=False, help="Randomize image order")
 @click.option("--nwindow", is_flag=True, default=False, help="Whether to use normalized window style")
 def imshow_command(source: str, shuffle: bool, nwindow: bool):
@@ -268,12 +268,25 @@ def imshow_command(source: str, shuffle: bool, nwindow: bool):
     from lqcv.tools.file import get_files
     from lqcv.utils.plot import cv2_imshow
     import cv2
+    import numpy as np
 
-    for file in get_files(source, shuffle=shuffle):
+    source = [Path(s) for s in source]
+    source1 = source[0]  # get the first source for images
+    for file in get_files(source1, shuffle=shuffle):
+        ims = []
         im = cv2.imread(str(file))
         if im is None:
             continue
-        cv2_imshow(im, nwindow=nwindow)
+        ims.append(im)
+        if len(source) > 1:
+            for s in source[1:]:
+                im_file = s / file.name
+                if not im_file.exists():
+                    continue
+                im = cv2.imread(str(im_file))
+                ims.append(im)
+
+        cv2_imshow(ims[0] if ims == 1 else np.concatenate(ims, axis=1), nwindow=nwindow)
 
 
 @main.command("info")
