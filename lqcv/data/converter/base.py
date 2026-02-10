@@ -466,3 +466,103 @@ class BaseConverter(metaclass=ABCMeta):
         for label in pbar:
             labels[label["img_name"]] = label
         return labels
+
+    def get_statistics(self):
+        """Visualize dataset statistics with histograms for box sizes and category distribution.
+
+        Args:
+            save_path (str | optional): Path to save the figure. If None, displays the plot.
+        """
+        import matplotlib.pyplot as plt
+
+        plt.switch_backend("Agg")
+
+        assert len(self.labels), "No labels detected!"
+
+        # Collect box size statistics
+        area_ranges = {
+            "Small(0-32²)": (0, 32**2),
+            "Medium(32²-96²)": (32**2, 96**2),
+            "Large(>96²)": (96**2, float("inf")),
+        }
+        box_counts = {"Small(0-32²)": 0, "Medium(32²-96²)": 0, "Large(>96²)": 0}
+
+        for label in tqdm(self.labels, desc="Analyzing box sizes"):
+            areas = label["bbox"].areas
+            box_counts["Small(0-32²)"] += (
+                (areas >= area_ranges["Small(0-32²)"][0]) & (areas < area_ranges["Small(0-32²)"][1])
+            ).sum()
+            box_counts["Medium(32²-96²)"] += (
+                (areas >= area_ranges["Medium(32²-96²)"][0]) & (areas < area_ranges["Medium(32²-96²)"][1])
+            ).sum()
+            box_counts["Large(>96²)"] += (
+                (areas >= area_ranges["Large(>96²)"][0]) & (areas < area_ranges["Large(>96²)"][1])
+            ).sum()
+
+        # Collect category statistics
+        cat_names = []
+        cat_counts = []
+        for name in self.class_names:
+            if name in self.catCount and self.catCount[name] > 0:
+                cat_names.append(name)
+                cat_counts.append(self.catCount[name])
+
+        # Create figure with two subplots
+        _, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Plot 1: Box size distribution
+        sizes = list(box_counts.keys())
+        counts = list(box_counts.values())
+        colors_size = ["#3498db", "#2ecc71", "#e74c3c"]
+        bars1 = ax1.bar(sizes, counts, color=colors_size, edgecolor="black", linewidth=1.2)
+        ax1.set_xlabel("Box Size Category", fontsize=12, fontweight="bold")
+        ax1.set_ylabel("Count", fontsize=12, fontweight="bold")
+        ax1.set_title("Box Size Distribution", fontsize=14, fontweight="bold")
+        ax1.grid(axis="y", alpha=0.3, linestyle="--")
+
+        # Add value labels on bars
+        for bar in bars1:
+            height = bar.get_height()
+            ax1.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height,
+                f"{int(height)}",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+                fontweight="bold",
+            )
+
+        # Plot 2: Category distribution
+        colors_cat = plt.cm.tab20(np.linspace(0, 1, len(cat_names)))
+        bars2 = ax2.bar(range(len(cat_names)), cat_counts, color=colors_cat, edgecolor="black", linewidth=1.2)
+        ax2.set_xlabel("Category", fontsize=12, fontweight="bold")
+        ax2.set_ylabel("Count", fontsize=12, fontweight="bold")
+        ax2.set_title("Category Distribution", fontsize=14, fontweight="bold")
+        ax2.set_xticks(range(len(cat_names)))
+        ax2.set_xticklabels(cat_names, rotation=45, ha="right")
+        ax2.grid(axis="y", alpha=0.3, linestyle="--")
+
+        # Add value labels on bars
+        for bar in bars2:
+            height = bar.get_height()
+            ax2.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height,
+                f"{int(height)}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                fontweight="bold",
+            )
+
+        plt.tight_layout()
+
+        save_path = "dataset_statistics.png"
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        LOGGER.info(f"Statistics visualization saved to {save_path}")
+        plt.close()
+        LOGGER.info(self)
+        LOGGER.info(
+            f"Small box cnt: {box_counts['Small(0-32²)']}\nMedium box cnt: {box_counts['Medium(32²-96²)']}\nLarge box cnt: {box_counts['Large(>96²)']}"
+        )
