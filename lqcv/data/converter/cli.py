@@ -276,5 +276,54 @@ def imshow_command(source: str, shuffle: bool, nwindow: bool):
         cv2_imshow(im, nwindow=nwindow)
 
 
+@main.command("info")
+@click.option("--source", required=True, help="Path to labels directory (YOLO/XML) or JSON file (COCO)")
+@click.option(
+    "--format", "input_format", required=True, type=click.Choice(["yolo", "xml", "coco"]), help="Input format"
+)
+@click.option("--img-dir", type=click.Path(), help="Images directory (auto-detected if not provided)")
+@click.option("--classes", help="Comma-separated class names")
+@click.option("--classes-file", type=click.Path(exists=True), help="File with class names (one per line)")
+def info_command(
+    source: str,
+    input_format: str,
+    img_dir: str | None,
+    classes: str | None,
+    classes_file: str | None,
+):
+    """Generate dataset info with box size and category distribution.
+
+    Examples:
+        # Get info for YOLO dataset
+        lqcv info --source labels/ --format yolo --classes "person,car,dog"
+
+        # Get info using classes file
+        lqcv info --source xmls/ --format xml --classes-file classes.txt
+
+        # Get info for COCO dataset
+        lqcv info --source annotations.json --format coco
+    """
+    # Parse class names
+    class_names = None
+    if classes:
+        class_names = [c.strip() for c in classes.split(",")]
+    elif classes_file:
+        with open(classes_file) as f:
+            class_names = [line.strip() for line in f if line.strip()]
+
+    # Load converter
+    click.echo(f"Loading {input_format.upper()} dataset from {source}...")
+    converter = get_converter(input_format, source, class_names, img_dir)
+
+    click.echo(f"Dataset loaded: {len(converter.labels)} images")
+    click.echo(converter)
+
+    # Generate info
+    click.echo("\nGenerating dataset info...")
+    converter.get_info()
+
+    click.echo("✅ info saved to dataset_info.png")
+
+
 if __name__ == "__main__":
     main()

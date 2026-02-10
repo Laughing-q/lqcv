@@ -480,7 +480,7 @@ class BaseConverter(metaclass=ABCMeta):
             labels[label["img_name"]] = label
         return labels
 
-    def get_statistics(self):
+    def get_info(self):
         """Visualize dataset statistics with histograms for box sizes and category distribution.
 
         Args:
