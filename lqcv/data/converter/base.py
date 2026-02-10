@@ -571,7 +571,7 @@ class BaseConverter(metaclass=ABCMeta):
 
         plt.tight_layout()
 
-        save_path = "dataset_statistics.png"
+        save_path = "dataset_info.png"
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
         LOGGER.info(f"Statistics visualization saved to {save_path}")
         plt.close()
