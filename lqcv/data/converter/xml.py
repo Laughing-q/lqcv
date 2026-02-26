@@ -10,7 +10,9 @@ import cv2
 
 
 class XMLConverter(YOLOConverter):
-    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None) -> None:
+    def __init__(
+        self, label_dir, class_names=None, img_dir=None, chunk_size=None, fraction: float | None = None
+    ) -> None:
         """XMLConverter.
 
         Args:
@@ -21,13 +23,15 @@ class XMLConverter(YOLOConverter):
                     root/
                     ├── images
                     ├── xmls
+            chunk_size (int | optional): The number of images to read at a time, which is useful when the dataset is large.
+            fraction (float | optional): The fraction of images to read, which is useful when the dataset is large and you want to read a subset of it.
         """
         if img_dir is None:
             img_dir = label_dir.replace("xmls", "images")
-        super().__init__(label_dir, class_names, img_dir, chunk_size)
+        super().__init__(label_dir, class_names, img_dir, chunk_size, fraction)
         self.format = "xml"
 
-    def read_labels(self, label_dir, chunk_size=None):
+    def read_labels(self, label_dir, chunk_size=None, fraction: float | None = None):
         super().read_labels(label_dir, chunk_size)
         # update class_names
         if self.class_names is None:

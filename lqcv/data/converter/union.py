@@ -20,7 +20,7 @@ class UnionConverter(BaseConverter):
         self.updateCntInfo()
         self.format = "union"
 
-    def read_labels(self, label_dir, chunk_size):
+    def read_labels(self, label_dir, chunk_size, fraction):
         """Bypass the abstract class check."""
         pass
 

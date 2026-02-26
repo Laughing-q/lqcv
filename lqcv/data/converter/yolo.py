@@ -14,7 +14,7 @@ import cv2
 
 
 class YOLOConverter(BaseConverter):
-    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None) -> None:
+    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None, fraction: float | None = None) -> None:
         """YOLOConverter.
 
         Args:
@@ -25,15 +25,17 @@ class YOLOConverter(BaseConverter):
                     root/
                     ├── images
                     ├── labels
+            chunk_size (int | optional): The number of images to read at a time, which is useful when the dataset is large.
+            fraction (float | optional): The fraction of images to read, which is useful when the dataset is large and you want to read a subset of it.
         """
         if img_dir is None:
             img_dir = label_dir.replace("labels", "images")
         if self.__class__.__name__ == "YOLOConverter":  # Do not affect XMLConverter
             assert osp.exists(img_dir), f"The directory '{img_dir}' does not exist, please pass `img_dir` arg."
-        super().__init__(label_dir, class_names, img_dir, chunk_size)
+        super().__init__(label_dir, class_names, img_dir, chunk_size, fraction)
         self.format = "yolo"
 
-    def read_labels(self, label_dir, chunk_size=None):
+    def read_labels(self, label_dir, chunk_size=None, fraction: float | None = None):
         """Read labels.
 
         Args:
@@ -44,6 +46,10 @@ class YOLOConverter(BaseConverter):
 
         catImg = defaultdict(list)
         img_names = os.listdir(label_dir if self.img_dir is None or not Path(self.img_dir).exists() else self.img_dir)
+        if fraction is not None:
+            import random
+
+            img_names = random.sample(img_names, int(len(img_names) * fraction))
         img_names = (
             [img_names[i : i + chunk_size] for i in range(0, len(img_names), chunk_size)]
             if chunk_size != None

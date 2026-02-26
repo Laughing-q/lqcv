@@ -198,6 +198,7 @@ def check_command(
 @click.option("--no-labels", is_flag=True, default=False, help="Hide label text")
 @click.option("--shuffle", is_flag=True, default=False, help="Randomize image order")
 @click.option("--images", help="Only visualize specific images (comma-separated filenames)")
+@click.option("--fraction", default=None, type=float, help="Visualize only a fraction of the dataset (e.g., 0.1 for 10%)")
 def visualize_command(
     source: str,
     input_format: str,
@@ -209,6 +210,7 @@ def visualize_command(
     no_labels: bool,
     shuffle: bool,
     images: str | None,
+    fraction: float | None,
 ):
     """Visualize dataset annotations with bounding boxes.
 

@@ -14,7 +14,9 @@ import json
 
 
 class BaseConverter(metaclass=ABCMeta):
-    def __init__(self, label_dir, class_names=None, img_dir=None, chunk_size=None) -> None:
+    def __init__(
+        self, label_dir, class_names=None, img_dir=None, chunk_size=None, fraction: float | None = None
+    ) -> None:
         super().__init__()
         assert osp.exists(label_dir), f"The directory/file '{label_dir}' does not exist."
 
@@ -25,7 +27,7 @@ class BaseConverter(metaclass=ABCMeta):
         self.img_dir = img_dir
         self.class_names = class_names
 
-        self.read_labels(label_dir, chunk_size)
+        self.read_labels(label_dir, chunk_size, fraction)
 
     def toCOCO(self, save_file, classes=None, im_dir=None):
         """Convert labels to coco format.
