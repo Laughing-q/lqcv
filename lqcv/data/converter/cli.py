@@ -6,7 +6,7 @@ from pathlib import Path
 import click
 
 
-def get_converter(input_format: str, source: str, class_names: list[str] | None = None, img_dir: str | None = None):
+def get_converter(input_format: str, source: str, class_names: list[str] | None = None, img_dir: str | None = None, fraction: float | None = None):
     """Get the appropriate converter based on input format.
 
     Args:
@@ -14,6 +14,7 @@ def get_converter(input_format: str, source: str, class_names: list[str] | None 
         source: Path to labels directory or JSON file
         class_names: List of class names (optional for xml/coco)
         img_dir: Path to images directory (optional)
+        fraction: Fraction of dataset to read (optional)
 
     Returns:
         Converter instance
@@ -21,11 +22,11 @@ def get_converter(input_format: str, source: str, class_names: list[str] | None 
     if input_format == "yolo":
         from .yolo import YOLOConverter
 
-        return YOLOConverter(source, class_names, img_dir=img_dir)
+        return YOLOConverter(source, class_names, img_dir=img_dir, fraction=fraction)
     elif input_format == "xml":
         from .xml import XMLConverter
 
-        return XMLConverter(source, class_names, img_dir=img_dir)
+        return XMLConverter(source, class_names, img_dir=img_dir, fraction=fraction)
     elif input_format == "coco":
         from .coco import COCOConverter
 
