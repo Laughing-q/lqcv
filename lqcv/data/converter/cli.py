@@ -6,7 +6,13 @@ from pathlib import Path
 import click
 
 
-def get_converter(input_format: str, source: str, class_names: list[str] | None = None, img_dir: str | None = None, fraction: float | None = None):
+def get_converter(
+    input_format: str,
+    source: str,
+    class_names: list[str] | None = None,
+    img_dir: str | None = None,
+    fraction: float | None = None,
+):
     """Get the appropriate converter based on input format.
 
     Args:
@@ -199,7 +205,9 @@ def check_command(
 @click.option("--no-labels", is_flag=True, default=False, help="Hide label text")
 @click.option("--shuffle", is_flag=True, default=False, help="Randomize image order")
 @click.option("--images", help="Only visualize specific images (comma-separated filenames)")
-@click.option("--fraction", default=None, type=float, help="Visualize only a fraction of the dataset (e.g., 0.1 for 10%)")
+@click.option(
+    "--fraction", default=None, type=float, help="Visualize only a fraction of the dataset (e.g., 0.1 for 10%)"
+)
 def visualize_command(
     source: str,
     input_format: str,
@@ -235,7 +243,7 @@ def visualize_command(
 
     # Load converter
     click.echo(f"Loading {input_format.upper()} dataset from {source}...")
-    converter = get_converter(input_format, source, class_names, img_dir)
+    converter = get_converter(input_format, source, class_names, img_dir, fraction=fraction)
 
     click.echo(f"Dataset loaded: {len(converter.labels)} images")
 
